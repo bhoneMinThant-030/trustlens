@@ -1,0 +1,15 @@
+[
+  {
+    "id": "aa_apply_card",
+    "version": "2026.1",
+    "category": "applying-eligibility",
+    "sampleQuestions": [
+      "How do I apply for a credit card?",
+      "What do I need to apply for an OCBC card?"
+    ],
+    "answer": "SYNTHETIC EXAMPLE: replace with approved wording from the official source.",
+    "sourceUrl": "https://www.ocbc.com/",
+    "owner": "admin-1",
+    "approvedAt": "2026-11-02"
+  }
+]

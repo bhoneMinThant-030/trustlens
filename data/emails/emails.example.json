@@ -1,0 +1,11 @@
+[
+  {
+    "id": "em_001",
+    "from": "Mei Ling Tan <meiling.tan@example.com>",
+    "receivedAt": "2026-11-05T09:12:00+08:00",
+    "subject": "Annual fee on my card",
+    "body": "Hi, I was charged an annual fee on my credit card this month. Can it be waived? Thanks, Mei Ling",
+    "category": "fees-charges",
+    "synthetic": true
+  }
+]

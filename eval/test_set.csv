@@ -1,0 +1,2 @@
+id,question,expected_answer,source_doc_id,category,answerable,expect_review,written_by
+t001,"Can the annual fee on my credit card be waived?","EXAMPLE ROW: replace with the answer from the source document",card-fees,fees-charges,yes,no,fe1

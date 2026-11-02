@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+.aws/
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+build/
+.vite/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local data and build output
+*.sqlite
+*.sqlite3
+*.db
+chroma_db/
+index.json
+ai/package/
+ai/*.zip
+.aws-sam/
+eval/results/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.idea/
