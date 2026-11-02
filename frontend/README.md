@@ -17,3 +17,25 @@ npm run dev
 - One shared API client in `src/api/` built from `docs/api-contract.md`
 - Use mock JSON until the Node endpoints are ready
 - Mock emails: `data/emails/`
+
+## Development
+
+The frontend uses React with Vite.
+
+### Run locally
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the local URL shown in the terminal (usually http://localhost:5173/).
+
+### Current progress
+
+- React + Vite project initialised.
+- ESLint configured.
+- Officer Workspace: Not started.
+- Back Office: Not started.
+- Backend API integration: Not started.
