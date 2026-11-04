@@ -1,0 +1,559 @@
+
+.officer-workspace {
+  min-height: 100vh;
+  padding: 30px;
+  background-color: #f5f7fb;
+  color: #1f2937;
+  font-family: Arial, sans-serif;
+  text-align: left;
+}
+
+.officer-workspace * {
+  box-sizing: border-box;
+}
+
+.officer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 20px 25px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border-left: 5px solid #e32636;
+}
+
+.officer-header h1 {
+  margin: 0;
+  color: #d71920;
+  font-size: 28px;
+}
+
+.officer-header span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+
+
+/* Basic layout settings for the Officer Workspace. */
+.officer-layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Before checking: Inbox takes 25%, Email Details takes 75%. */
+.officer-layout.without-result {
+  grid-template-columns: 25fr 75fr;
+}
+
+/* After checking: Show Inbox, Email Details and AI Verification. */
+.officer-layout.with-result {
+  grid-template-columns: 25fr 35fr 40fr;
+}
+
+
+
+
+/* Give all three sections the same card design. */
+.officer-inbox,
+.officer-details,
+.officer-verification-panel {
+  background-color: white;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+
+  /* Prevent long content from stretching the columns. */
+  min-width: 0;
+}
+
+
+.officer-inbox h2,
+.officer-details h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+.officer-email-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 16px;
+  margin-bottom: 12px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #1f2937;
+  text-align: left;
+  cursor: pointer;
+  gap: 6px;
+}
+
+.officer-email-item:hover {
+  background-color: #f9fafb;
+}
+
+.officer-email-item.selected {
+  background-color: #fff1f2;
+  border-color: #e32636;
+}
+
+.officer-email-item span {
+  font-size: 14px;
+}
+
+.officer-email-item small {
+  color: #6b7280;
+}
+
+.officer-details > p {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+.officer-message {
+  margin-top: 24px;
+  padding: 20px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  line-height: 1.7;
+}
+
+.officer-message h3 {
+  margin-top: 0;
+}
+
+@media (max-width: 700px) {
+  .officer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .officer-workspace {
+    padding: 16px;
+  }
+}
+.trustlens-check-button {
+  margin-top: 20px;
+  padding: 14px 24px;
+  background-color: #d71920;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.trustlens-check-button:hover {
+  background-color: #a81319;
+}
+
+.trustlens-result {
+  margin-top: 24px;
+  padding: 24px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.trustlens-result h3 {
+  margin-bottom: 20px;
+  color: #d71920;
+}
+
+
+/* Basic design for the confidence score box. */
+.confidence-section {
+  padding: 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* Make the confidence percentage large and clear. */
+.confidence-score {
+  font-size: 32px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+/* Make the verification status easy to read. */
+.confidence-status {
+  font-weight: 600;
+}
+
+/* Green: answer is supported by evidence. */
+.confidence-high {
+  background-color: #f0fdf4;
+  color: #15803d;
+}
+
+/* Amber: answer needs human review. */
+.confidence-medium {
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+/* Red: very low confidence, human review needed. */
+.confidence-low {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+
+.ai-answer-section {
+  background-color: #f9fafb;
+  padding: 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+
+.verification-section {
+  background-color: #f9fafb;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+.verification-section p {
+  margin-top: 10px;
+}
+
+
+/* Main section that contains all verified claims. */
+.claims-section {
+  margin-top: 24px;
+}
+
+/* Add spacing below the section heading. */
+.claims-section h4 {
+  margin-bottom: 16px;
+}
+
+/* Each claim is displayed inside its own card. */
+.claim-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+/* Place the claim number and status beside each other. */
+.claim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Basic design for the status label. */
+.claim-status {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Green means the claim has supporting evidence. */
+.claim-supported {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* Amber means there is not enough evidence. */
+.claim-insufficient {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* Red means the claim contradicts the evidence. */
+.claim-contradicted {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Display the evidence source below each claim. */
+.claim-source {
+  background-color: #f9fafb;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+/* Add some spacing between the source title and text. */
+.claim-source p {
+  margin-top: 6px;
+}
+
+
+/* Add space above the human review button. */
+.review-action-section {
+  margin-top: 24px;
+}
+
+/* Style the button used to request human review. */
+.send-review-button {
+  background-color: #b91c1c;
+  color: white;
+  border: none;
+  padding: 14px 22px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Make the button darker when the mouse is over it. */
+.send-review-button:hover {
+  background-color: #991b1b;
+}
+
+/* Show a confirmation after the button is clicked. */
+.review-success-message {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  padding: 16px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+
+/* Allow the Officer Workspace to fill the screen. */
+.officer-workspace {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+
+/* Keep the inbox visible when the page scrolls. */
+.officer-inbox {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+}
+
+/* Make the AI results easier to read. */
+.trustlens-result {
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* Make the layout work better on smaller screens. */
+@media (max-width: 900px) {
+
+  /* Stop the inbox from sticking on small screens. */
+  .officer-inbox {
+    position: static;
+  }
+
+  /* Reduce spacing inside the result panel. */
+  .trustlens-result {
+    padding: 16px;
+  }
+}
+
+/* Remove the extra card border inside the AI panel. */
+.officer-verification-panel .trustlens-result {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Show a helpful message before the officer checks an email. */
+.officer-verification-panel {
+  min-height: 350px;
+}
+
+
+/* Use two columns on medium-sized screens. */
+@media (max-width: 1100px) {
+  .officer-layout.with-result {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Move AI Verification below the other sections. */
+  .officer-verification-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Stack all sections on smaller screens. */
+@media (max-width: 700px) {
+  .officer-layout.with-result,
+  .officer-layout.without-result {
+    grid-template-columns: 1fr;
+  }
+
+  .officer-verification-panel {
+    grid-column: auto;
+  }
+}
+
+
+/* Warning box shown above the AI verification result. */
+.review-warning {
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* Remove extra space above the warning heading. */
+.review-warning h4 {
+  margin: 0 0 8px;
+}
+
+/* Make the warning message easy to read. */
+.review-warning p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Amber warning when human review is required. */
+.review-required {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+/* Green message when the evidence check passes. */
+.review-passed {
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+
+/* Add spacing inside the review confirmation message. */
+.review-success-message p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+/* Make the demo notice smaller than the main message. */
+.review-success-message small {
+  font-size: 12px;
+  font-weight: normal;
+}
+
+
+/* Separate the exact source passage from the source name. */
+.source-passage {
+  margin-top: 12px;
+  padding: 14px;
+  background-color: #ffffff;
+  border-left: 4px solid #d71920;
+  border-radius: 6px;
+}
+
+/* Make the evidence text easy to read. */
+.source-passage p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+  color: #374151;
+}
+
+
+/* Add spacing above the expandable evidence section. */
+.source-details {
+  margin-top: 12px;
+}
+
+/* Style the clickable heading used to show the evidence. */
+.source-details summary {
+  padding: 12px;
+  background-color: #fff1f2;
+  color: #b91c1c;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Change the background when the officer points at it. */
+.source-details summary:hover {
+  background-color: #ffe4e6;
+}
+
+/* Add spacing between the button and expanded passage. */
+.source-details .source-passage {
+  margin-top: 10px;
+}
+
+
+
+
+/* Place the review title and status beside each other. */
+.review-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Show pending review using an amber label. */
+.review-pending-badge {
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 7px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Keep the review message easy to read. */
+.review-success-message p {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+
+/* Button used to simulate a reviewer response during testing. */
+.demo-review-button {
+  display: block;
+  margin-top: 16px;
+  padding: 12px 18px;
+  background-color: #374151;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Make the demo button darker when hovered. */
+.demo-review-button:hover {
+  background-color: #1f2937;
+}
+
+/* Display the answer returned by the demo reviewer. */
+.reviewed-answer-section {
+  margin-top: 18px;
+  padding: 18px;
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+}
+
+/* Style the completed review label. */
+.review-approved-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  background-color: #dcfce7;
+  color: #166534;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Make the reviewed answer easy to read. */
+.reviewed-answer-section p {
+  line-height: 1.7;
+}
