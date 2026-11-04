@@ -1,0 +1,653 @@
+/* Back office styles. Colours match the Officer Workspace. */
+
+.backoffice {
+  min-height: 100vh;
+  padding: 30px;
+  background-color: #f5f7fb;
+  color: #1f2937;
+  font-family: Arial, sans-serif;
+  text-align: left;
+}
+
+.backoffice * {
+  box-sizing: border-box;
+}
+
+/* ---------- Header and tabs ---------- */
+
+.bo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background-color: #ffffff;
+  padding: 20px 25px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border-left: 5px solid #e32636;
+}
+
+.bo-header h1 {
+  margin: 0;
+  color: #d71920;
+  font-size: 28px;
+}
+
+.bo-header span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.bo-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bo-role-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.bo-role-switch select,
+.bo-filter-row select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #ffffff;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.bo-link {
+  color: #d71920;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.bo-link:hover {
+  text-decoration: underline;
+}
+
+.bo-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bo-tabs button {
+  padding: 12px 18px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font-size: 15px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.bo-tabs button:hover {
+  color: #1f2937;
+}
+
+.bo-tabs button.active {
+  color: #d71920;
+  border-bottom-color: #d71920;
+  font-weight: bold;
+}
+
+/* ---------- Shared pieces ---------- */
+
+.bo-card {
+  background-color: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  min-width: 0;
+}
+
+.bo-muted {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.bo-empty {
+  padding: 24px 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+.bo-error {
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.bo-warning {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: #fffbeb;
+  color: #92400e;
+  font-size: 14px;
+}
+
+.bo-toast {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background-color: #f0fdf4;
+  color: #166534;
+  font-size: 14px;
+}
+
+.bo-primary-button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background-color: #d71920;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.bo-primary-button:hover {
+  background-color: #a81319;
+}
+
+.bo-primary-button:disabled,
+.bo-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bo-secondary-button {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #1f2937;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bo-secondary-button:hover {
+  background-color: #f9fafb;
+}
+
+.bo-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bo-pill,
+.bo-label {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background-color: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Review triggers */
+.bo-trigger-auto_threshold {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.bo-trigger-auto_contradiction,
+.bo-trigger-auto_safety {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.bo-trigger-manual {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Review status */
+.bo-status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.bo-status-approved,
+.bo-status-corrected {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* Claim labels */
+.bo-label-supported {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.bo-label-contradicted {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.bo-label-insufficient_evidence {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.bo-label-outdated {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+
+.bo-authority-official {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.bo-authority-unofficial {
+  background-color: #fff1f2;
+  color: #be123c;
+}
+
+/* ---------- Review queue layout ---------- */
+
+.bo-queue {
+  display: grid;
+  grid-template-columns: minmax(280px, 30fr) 70fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.bo-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.bo-queue-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background-color: #f3f4f6;
+}
+
+.bo-queue-tabs button {
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.bo-queue-tabs button.active {
+  background-color: #ffffff;
+  color: #1f2937;
+  font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.bo-count {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: #d71920;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.bo-filter-row {
+  display: flex;
+  gap: 8px;
+}
+
+.bo-filter-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.bo-queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #f9fafb;
+  text-align: left;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.bo-queue-item:hover {
+  background-color: #fff1f2;
+}
+
+.bo-queue-item.selected {
+  border-color: #e32636;
+  background-color: #fff1f2;
+}
+
+.bo-queue-item strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.bo-queue-item small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.bo-queue-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bo-queue-confidence {
+  font-size: 13px;
+  font-weight: bold;
+  color: #374151;
+}
+
+/* ---------- Review detail ---------- */
+
+.bo-detail h2 {
+  margin: 4px 0 10px;
+  font-size: 21px;
+  line-height: 1.3;
+}
+
+.bo-detail h3 {
+  margin: 24px 0 10px;
+  font-size: 16px;
+}
+
+.bo-detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.bo-detail-top .bo-muted {
+  margin: 0;
+}
+
+.bo-confidence {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 110px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid;
+}
+
+.bo-confidence span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.bo-confidence strong {
+  font-size: 28px;
+}
+
+.bo-confidence-high {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.bo-confidence-medium {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.bo-confidence-low {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.bo-confidence-none {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.bo-why {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 4px solid;
+  font-size: 14px;
+}
+
+.bo-why-auto_threshold {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.bo-why-auto_contradiction,
+.bo-why-auto_safety {
+  background-color: #fef2f2;
+  border-color: #dc2626;
+}
+
+.bo-why-manual {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.bo-note {
+  margin: 8px 0 0;
+}
+
+.bo-answer-box {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.bo-claim {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid;
+}
+
+.bo-claim-supported {
+  border-left-color: #16a34a;
+}
+
+.bo-claim-contradicted {
+  border-left-color: #dc2626;
+}
+
+.bo-claim-insufficient_evidence {
+  border-left-color: #f59e0b;
+}
+
+.bo-claim-header {
+  display: flex;
+  gap: 6px;
+}
+
+.bo-claim-text {
+  margin: 8px 0 4px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.bo-claim-reason {
+  margin: 0 0 8px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.bo-source-details {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.bo-source-details summary {
+  color: #1d4ed8;
+  cursor: pointer;
+}
+
+.bo-source {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+}
+
+.bo-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.bo-source blockquote {
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 3px solid #93c5fd;
+  line-height: 1.5;
+}
+
+.bo-source a {
+  color: #1d4ed8;
+  font-size: 13px;
+}
+
+/* ---------- Decision ---------- */
+
+.bo-decision-form {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.bo-radio-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bo-radio-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bo-radio-row label.selected {
+  border-color: #d71920;
+  background-color: #fff1f2;
+}
+
+.bo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.bo-field textarea,
+.bo-field input {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.bo-field textarea:focus,
+.bo-field input:focus {
+  outline: 2px solid #fca5a5;
+  border-color: #d71920;
+}
+
+.bo-readonly {
+  margin-top: 24px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+
+.bo-decision-log {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 10px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.bo-decision-log h3 {
+  margin: 0 0 4px;
+  color: #166534;
+}
+
+.bo-decision-log .bo-answer-box {
+  margin-top: 6px;
+  background-color: #ffffff;
+}
+
+/* ---------- Smaller screens ---------- */
+
+@media (max-width: 900px) {
+  .backoffice {
+    padding: 16px;
+  }
+
+  .bo-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bo-queue {
+    grid-template-columns: 1fr;
+  }
+
+  .bo-queue-list {
+    position: static;
+    max-height: none;
+  }
+}
