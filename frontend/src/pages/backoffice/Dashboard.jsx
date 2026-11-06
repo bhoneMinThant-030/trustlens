@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStats } from '../../api/backoffice'
 import { categoryLabel, formatPercent } from '../../constants/labels'
+import Hero from './Hero'
 
 /*
   Dashboard tab (admin).
@@ -16,22 +17,13 @@ const FAILURE_COLUMNS = [
   { key: 'manual', label: 'Sent by officer' },
 ]
 
-function StatTile({ label, value, detail }) {
-  return (
-    <div className="bo-card bo-stat">
-      <span className="bo-stat-label">{label}</span>
-      <strong className="bo-stat-value">{value}</strong>
-      {detail && <span className="bo-stat-detail">{detail}</span>}
-    </div>
-  )
-}
-
 // Horizontal bars: one per category, longest = most pending.
 function PendingBars({ rows }) {
   const max = Math.max(1, ...rows.map((row) => row.pending))
+  const sorted = [...rows].sort((a, b) => b.pending - a.pending)
   return (
     <div className="bo-bars" role="list">
-      {rows.map((row) => (
+      {sorted.map((row) => (
         <div
           className="bo-bar-row"
           role="listitem"
@@ -81,39 +73,30 @@ function Dashboard({ user }) {
 
   return (
     <div className="bo-dashboard">
-      <div className="bo-stat-row">
-        <StatTile
-          label="Pending reviews"
+      <div className="bo-dash-lead">
+        <Hero
+          overline="Pending reviews"
           value={stats.pendingTotal}
-          detail="Waiting for a reviewer"
+          unit={stats.pendingTotal === 1 ? 'answer' : 'answers'}
+          text={`${stats.reviewedTotal} of the ${stats.answeredTotal} answers checked this week were sent to review.`}
+          stats={[
+            { label: 'Review rate', value: formatPercent(reviewRate) },
+            { label: 'Checked', value: stats.answeredTotal },
+            { label: 'Resolved', value: stats.resolvedTotal },
+          ]}
         />
-        <StatTile
-          label="Review rate"
-          value={formatPercent(reviewRate)}
-          detail={`${stats.reviewedTotal} of ${stats.answeredTotal} answers sent to review`}
-        />
-        <StatTile
-          label="Answers checked"
-          value={stats.answeredTotal}
-          detail="Generated answers this week"
-        />
-        <StatTile
-          label="Resolved reviews"
-          value={stats.resolvedTotal}
-          detail="Approved or corrected"
-        />
-      </div>
 
-      <section className="bo-card">
-        <h2 className="bo-section-title">Pending reviews by category</h2>
-        <PendingBars rows={rows} />
-      </section>
+        <section className="bo-card">
+          <h2 className="bo-section-title">Pending reviews by category</h2>
+          <PendingBars rows={rows} />
+        </section>
+      </div>
 
       <section className="bo-card">
         <h2 className="bo-section-title">Review rate and failure types by category</h2>
         <p className="bo-muted">
           A flagged answer can have more than one failure type, so the failure columns can add up to
-          more than "Sent to review".
+          more than "Sent to review". The highest number in each column is shown in red.
         </p>
         <div className="bo-table-wrap">
           <table className="bo-table">

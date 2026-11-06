@@ -8,6 +8,7 @@ import {
   formatDateTime,
   formatPercent,
 } from '../../constants/labels'
+import { ChevronIcon } from './Icons'
 
 // Explains in plain words why this answer was sent for review.
 function triggerExplanation(review) {
@@ -26,34 +27,34 @@ function triggerExplanation(review) {
   }
 }
 
-function confidenceLevel(confidence) {
-  if (confidence === null || confidence === undefined) return 'none'
-  if (confidence >= CONFIDENCE_THRESHOLD) return 'high'
-  if (confidence >= 0.5) return 'medium'
-  return 'low'
-}
-
-// One claim, coloured by its label, with the source passage behind it.
+// One claim with its label and the source passage behind it.
 function ClaimCard({ claim, source }) {
   return (
     <div className={`bo-claim bo-claim-${claim.label}`}>
-      <div className="bo-claim-header">
-        <span className={`bo-label bo-label-${claim.label}`}>{CLAIM_LABELS[claim.label]}</span>
-        {claim.outdated && <span className="bo-label bo-label-outdated">Newer version exists</span>}
-      </div>
-      <p className="bo-claim-text">{claim.text}</p>
-      <p className="bo-claim-reason">{claim.reason}</p>
+      <div className="bo-claim-body">
+        <p className="bo-claim-text">{claim.text}</p>
+        <p className="bo-claim-reason">{claim.reason}</p>
+        <div className="bo-pill-row">
+          <span className={`bo-label bo-label-${claim.label}`}>{CLAIM_LABELS[claim.label]}</span>
+          {claim.outdated && (
+            <span className="bo-label bo-label-outdated">Newer version exists</span>
+          )}
+        </div>
 
-      {source ? (
-        <details className="bo-source-details">
-          <summary>
-            Source: {source.title} (v{source.version})
-          </summary>
-          <SourcePassage source={source} />
-        </details>
-      ) : (
-        <p className="bo-muted">No matching approved source found.</p>
-      )}
+        {source ? (
+          <details className="bo-source-details">
+            <summary>
+              <ChevronIcon size={16} />
+              <span>
+                Source: {source.title} (v{source.version})
+              </span>
+            </summary>
+            <SourcePassage source={source} />
+          </details>
+        ) : (
+          <p className="bo-muted bo-no-source">No matching approved source found.</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -81,8 +82,13 @@ function SourcePassage({ source }) {
 function DecisionLog({ review }) {
   const { decision } = review
   return (
-    <div className={`bo-decision-log bo-decision-${decision.decision}`}>
-      <h3>{decision.decision === 'approved' ? 'Approved' : 'Corrected'}</h3>
+    <div className={`bo-card bo-decision-log bo-decision-${decision.decision}`}>
+      <div className="bo-decision-head">
+        <h3>Decision</h3>
+        <span className={`bo-tag bo-status-${decision.decision}`}>
+          {STATUS_LABELS[decision.decision]}
+        </span>
+      </div>
       <p className="bo-muted">
         By {decision.reviewer} on {formatDateTime(decision.decidedAt)}
       </p>
@@ -135,10 +141,10 @@ function DecisionForm({ review, onDecide }) {
   }
 
   return (
-    <form className="bo-decision-form" onSubmit={handleSubmit}>
+    <form className="bo-card bo-decision-form" onSubmit={handleSubmit}>
       <h3>Your decision</h3>
 
-      <div className="bo-radio-row">
+      <div className="bo-pills bo-radio-row">
         <label className={decision === 'approved' ? 'selected' : ''}>
           <input
             type="radio"
@@ -204,36 +210,64 @@ function DecisionForm({ review, onDecide }) {
 function ReviewDetail({ review, canDecide, onDecide }) {
   // Look up each claim's source passage by its sourceId.
   const sourcesById = Object.fromEntries(review.sources.map((source) => [source.id, source]))
-  const level = confidenceLevel(review.confidence)
+  const countClaims = (label) => review.claims.filter((claim) => claim.label === label).length
+  const belowThreshold = (review.confidence ?? 0) < CONFIDENCE_THRESHOLD
 
   return (
     <div className="bo-detail">
-      <div className="bo-detail-top">
-        <div>
-          <p className="bo-muted">
-            {review.id} · email {review.emailId} · {review.officerId} ·{' '}
-            {formatDateTime(review.createdAt)}
-          </p>
-          <h2>{review.question}</h2>
-          <div className="bo-pill-row">
-            <span className="bo-pill">{categoryLabel(review.category)}</span>
-            <span className={`bo-pill bo-trigger-${review.trigger}`}>
-              {TRIGGER_LABELS[review.trigger]}
-            </span>
-            <span className={`bo-pill bo-status-${review.status}`}>
-              {STATUS_LABELS[review.status]}
-            </span>
+      <div className="bo-card bo-question">
+        <p className="bo-mono">
+          {review.id} · email {review.emailId} · {review.officerId} ·{' '}
+          {formatDateTime(review.createdAt)}
+        </p>
+        <h2>{review.question}</h2>
+        <div className="bo-pill-row">
+          <span className="bo-tag">{categoryLabel(review.category)}</span>
+          <span className={`bo-tag bo-status-${review.status}`}>
+            {STATUS_LABELS[review.status]}
+          </span>
+        </div>
+
+        <p className={`bo-flag bo-flag-${review.trigger}`}>
+          <strong>{TRIGGER_LABELS[review.trigger]}.</strong> {triggerExplanation(review)}
+        </p>
+
+        <div className="bo-answer-grid">
+          <div>
+            <p className="bo-field-label">AI answer</p>
+            <p className="bo-answer-box">{review.answer}</p>
+          </div>
+
+          <div className="bo-check-summary">
+            <p className="bo-confidence">
+              <span>Confidence</span>
+              <strong className={belowThreshold ? 'bo-low' : ''}>
+                {formatPercent(review.confidence)}
+              </strong>
+            </p>
+            {/* Bar with a tick where the review threshold sits */}
+            <div className="bo-meter" aria-hidden="true">
+              <span style={{ width: `${(review.confidence ?? 0) * 100}%` }} />
+              <i style={{ left: `${CONFIDENCE_THRESHOLD * 100}%` }} />
+            </div>
+            <p className="bo-muted">Needs {formatPercent(CONFIDENCE_THRESHOLD)} to skip review</p>
+            <dl>
+              <div>
+                <dt>Supported</dt>
+                <dd>{countClaims('supported')}</dd>
+              </div>
+              <div>
+                <dt>Contradicted</dt>
+                <dd>{countClaims('contradicted')}</dd>
+              </div>
+              <div>
+                <dt>No evidence</dt>
+                <dd>{countClaims('insufficient_evidence')}</dd>
+              </div>
+            </dl>
           </div>
         </div>
-        <div className={`bo-confidence bo-confidence-${level}`}>
-          <span>Confidence</span>
-          <strong>{formatPercent(review.confidence)}</strong>
-        </div>
-      </div>
 
-      <div className={`bo-why bo-why-${review.trigger}`}>
-        <strong>Why it is here: </strong>
-        {triggerExplanation(review)}
         {review.note && (
           <p className="bo-note">
             <strong>Officer note:</strong> {review.note}
@@ -241,29 +275,31 @@ function ReviewDetail({ review, canDecide, onDecide }) {
         )}
       </div>
 
-      <section>
-        <h3>AI answer</h3>
-        <p className="bo-answer-box">{review.answer}</p>
+      <section className="bo-card">
+        <h3>Claims checked ({review.claims.length})</h3>
+        <div className="bo-claims">
+          {review.claims.map((claim) => (
+            <ClaimCard key={claim.id} claim={claim} source={sourcesById[claim.sourceId]} />
+          ))}
+        </div>
       </section>
 
-      <section>
-        <h3>Claim-by-claim check</h3>
-        {review.claims.map((claim) => (
-          <ClaimCard key={claim.id} claim={claim} source={sourcesById[claim.sourceId]} />
-        ))}
-      </section>
-
-      <section>
-        <h3>Retrieved sources</h3>
-        {review.sources.map((source) => (
-          <details key={source.id} className="bo-source-details">
-            <summary>
-              {source.title} (v{source.version})
-              {source.authority === 'unofficial' && ' · unofficial'}
-            </summary>
-            <SourcePassage source={source} />
-          </details>
-        ))}
+      <section className="bo-card">
+        <h3>Sources retrieved ({review.sources.length})</h3>
+        <div className="bo-source-list">
+          {review.sources.map((source) => (
+            <details key={source.id} className="bo-source-details bo-source-row">
+              <summary>
+                <ChevronIcon size={16} />
+                <span>
+                  {source.title} (v{source.version})
+                  {source.authority === 'unofficial' && ' · unofficial'}
+                </span>
+              </summary>
+              <SourcePassage source={source} />
+            </details>
+          ))}
+        </div>
       </section>
 
       {review.status === 'pending' ? (
@@ -271,7 +307,7 @@ function ReviewDetail({ review, canDecide, onDecide }) {
           // `key` resets the form when another review is selected.
           <DecisionForm key={review.id} review={review} onDecide={onDecide} />
         ) : (
-          <p className="bo-muted bo-readonly">
+          <p className="bo-card bo-muted bo-readonly">
             Only reviewers can approve or correct answers. Switch to the Reviewer role to decide.
           </p>
         )
