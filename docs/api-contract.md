@@ -52,6 +52,7 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
       "text": "The annual fee is waived for the first year.",
       "label": "supported",
       "sourceId": "card-fees@2026.1#3",
+      "quote": "The annual fee is waived for the first year",
       "outdated": false,
       "reason": "Matches the 2026 fee schedule, section 3."
     },
@@ -60,6 +61,7 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
       "text": "After that, the fee is waived if you spend $10,000 a year.",
       "label": "insufficient_evidence",
       "sourceId": null,
+      "quote": null,
       "outdated": false,
       "reason": "No retrieved passage mentions a spend-based waiver."
     }
@@ -80,9 +82,28 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 }
 ```
 
-- `confidence` is calculated from the claim labels (e.g. supported ÷ total), between 0 and 1
+- `confidence` = verified claims ÷ all claims, between 0 and 1, rounded to 2 decimals. A claim is **verified** only when it is `supported` by a **current, official** source. A claim supported only by an outdated or unofficial source counts against the score. No claims at all gives `0`
+- `confidence` is also `0` when `relevance.answersQuestion` is `false`: true facts that answer a different question are not a trustworthy answer. Node's threshold rule then sends it to review
+- `quote`: the exact words from the cited passage behind the label (`null` for `insufficient_evidence`). A quote may join two parts of a passage with ` ... `. The Lambda checks every quote is really in a passage, with numbers and negations matching exactly. If Model B cited the wrong passage, `sourceId` is moved to the passage that contains the quote. If no passage contains it, the claim is downgraded to `insufficient_evidence`. Screens can highlight the quote inside the source excerpt
 - `outdated: true` means the cited document has been superseded by a newer version
 - `safetyTextAltered: true` means fixed safety wording was changed by the AI
+- If no passage in the knowledge base matches the question, or the passages found do not answer it, `answer` says so, `claims` and `sources` are empty and `confidence` is `0`
+
+Two extra fields, also returned (Node can store them; screens can ignore them):
+
+```json
+"relevance": { "answersQuestion": true, "reason": "The draft states the annual fee waiver rules asked about." },
+"meta": {
+  "answerModel": "amazon.nova-lite-v1:0",
+  "checkerModel": "amazon.nova-pro-v1:0",
+  "indexCreatedAt": "2026-11-06T12:00:00+00:00",
+  "retrieval": [ { "id": "card-fees@2026.1#3", "score": 0.612 } ],
+  "latencyMs": 8400
+}
+```
+
+- `relevance.answersQuestion`: Model B's view on whether the draft addresses what was asked, ignoring whether its facts are right (`true`, `false` or `null` if unknown). `false` sets `confidence` to `0`
+- `meta`: for debugging and the evaluation. `retrieval` is the passages found for the question, best first
 
 ### Response: approved answer
 
@@ -100,13 +121,19 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 }
 ```
 
+- Approved-answer matching is **off** until the storage for approved answers is decided
+
 ### Response: error
 
 ```json
 { "requestId": "q_125", "error": { "code": "BEDROCK_ERROR", "message": "Model call timed out" } }
 ```
 
-Codes: `BEDROCK_ERROR`, `INDEX_NOT_FOUND`, `BAD_REQUEST`.
+Codes: `BAD_REQUEST`, `BEDROCK_ERROR`, `INDEX_NOT_FOUND`, `INDEX_MISMATCH` (index built with a different embedding model), `INTERNAL_ERROR`.
+
+- Errors come back as a normal payload, so Node checks for an `error` key
+- A crash or a timeout (60 s) comes back with `FunctionError` set on the invoke result instead. Node treats both as `LAMBDA_FAILED`
+- A typical answer takes 5 to 15 s. Show a loading state on the officer screen
 
 ---
 
