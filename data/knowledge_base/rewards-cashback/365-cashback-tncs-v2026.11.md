@@ -7,10 +7,10 @@ effective_date: 2026-11-01
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/iwov-resources/sg/ocbc/personal/pdf/cards/tncs-governing-365-cc-cashback-programme-wef1nov26.pdf"
-accessed: 2026-11-03
+accessed: 2026-11-07
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC 365 cashback terms effective 1 November 2026. Rates, category definitions, minimum spend, Clause 2A cap, uncapped advertising cashback, exclusions and crediting rules confirmed. Added advertising-platform eligibility details."
 ---
 # Terms and conditions governing OCBC 365 Credit Card Cashback Programme
 
@@ -31,6 +31,7 @@ With effect from 1 November 2026.
 - Land Transport: MCC 4011, 4111, 4112, 4121, 4131. Excludes EZ-Link and Transit Link top-ups.
 - Petrol: MCC 5541 and 5542. Excludes fleet card top-ups.
 - Watsons: transactions under merchant description "WATSONS*" and "Watsons", excluding purchases on online marketplaces such as Lazada, Shopee and Amazon.
+- Advertising Platform: 99.CO, EDGEPROP, PROPERTYGURU, STREETSINE, and FACEBOOK/META under MCC 7311. Payments through mobile wallet services specified by OCBC are excluded from the 1% and 0.5% advertising cashback rates.
 
 ## Minimum spend and cap (Clause 3)
 

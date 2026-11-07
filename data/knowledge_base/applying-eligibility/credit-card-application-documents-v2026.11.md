@@ -9,8 +9,8 @@ supersedes:
 source_url: "https://www.ocbc.com/personal-banking/help-and-support/cards/credit-card-applications"
 accessed: 2026-11-03
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official source on 2026-11-04. Corrected the foreigner payslip requirement to include (d)."
 ---
 # Credit card applications: eligibility and income documents
 
@@ -37,7 +37,7 @@ The page lists additional accepted documents for applicants with variable or com
 
 ## Income documents: foreigners (salaried employees)
 
-- (a) Computerised payslip, submitted together with one of (b) or (c)
+- (a) Computerised payslip, submitted together with one of (b), (c) or (d)
 - (b) Salary crediting bank statement
 - (c) Income Tax Notice of Assessment
 - (d) Company letter certifying employment and salary, submitted with one of (a) to (c)

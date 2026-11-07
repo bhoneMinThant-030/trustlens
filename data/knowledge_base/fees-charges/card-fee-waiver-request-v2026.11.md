@@ -7,10 +7,10 @@ effective_date: 2026-11-03
 authority: official
 supersedes:
 source_url: "https://ocbc.com/personal-banking/digital-banking/step-by-step-guides/cards-management/card-fee-waiver"
-accessed: 2026-11-03
+accessed: 2026-11-04
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC fee-waiver guide. App and Internet Banking steps confirmed. The guide does not specify eligible fees, approval criteria or guarantee approval. No effective date is stated."
 ---
 # How to request a credit card fee waiver
 
@@ -32,4 +32,4 @@ Customers can request a credit card fee waiver themselves through digital bankin
 
 ## Notes
 
-The guide does not state which fees qualify or the approval criteria. Approval is at the Bank's discretion.
+The guide explains how to submit a fee-waiver request but does not specify eligible fees, approval criteria or guarantee approval.

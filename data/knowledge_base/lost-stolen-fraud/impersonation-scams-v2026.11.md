@@ -9,8 +9,8 @@ supersedes:
 source_url: "https://ocbc.com/personal-banking/security/secure-banking-ways/impersonation-scams"
 accessed: 2026-11-03
 synthetic: false
-verified: false
-notes: "Source of the fixed safety wording: 'OCBC employees will never ask you to reveal your PIN/OTP or transfer funds to personal accounts.'"
+verified: true
+notes: "Checked against the official OCBC impersonation-scams page. Safety statements, warning signs, fraud-reporting hotline, kill switch channels and ScamShield contact confirmed. The page does not state an effective date."
 ---
 # Impersonation scams: what OCBC will never do
 
