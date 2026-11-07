@@ -7,18 +7,20 @@ effective_date: 2026-11-03
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/personal-banking/digital-banking/card-control"
-accessed: 2026-11-03
+accessed: 2026-11-07
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC Card Control page. Updated navigation to More > Card services, following the main access instructions. Older FAQ steps still mention the top-left menu. Features and service conditions confirmed; no effective date is stated."
 ---
 # Card Control: lock, report and replace cards in the OCBC app
 
 ## What customers can do
 
-- Lock or unlock a card, report a lost card, order a replacement card, request a credit card fee waiver, and declare a credit card dispute.
-- Activate new, renewal or replacement cards.
-- Turn overseas ATM withdrawals and overseas spending on or off, and change withdrawal and spending limits.
+## What customers can do
+
+- Lock or unlock cards, report lost cards, request replacements, and reset Debit/ATM card PINs.
+- Activate cards.
+- Manage overseas usage and withdrawal or spending limits.
 
 ## Lock and unlock
 
@@ -27,8 +29,8 @@ Locking or unlocking takes about 5 to 10 seconds and takes effect in real time. 
 ## Steps in the OCBC app
 
 1. Log in to the OCBC app.
-2. Tap the menu at the top left.
-3. Tap "Card services".
+2. Tap "More" on the bottom navigation bar.
+3. Scroll down to "Card services".
 4. Choose "Lock / unlock card", "Report lost card", "Replace card" or "Reset Debit/ATM card PIN".
 
 For credit cards, customers can also tap "What you owe", select the credit card, then "Manage your card".

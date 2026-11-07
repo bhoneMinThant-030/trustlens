@@ -7,10 +7,10 @@ effective_date: 2025-10-01
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/iwov-resources/sg/ocbc/personal/pdf/cards/cards-fee-charge.pdf"
-accessed: 2026-11-03
+accessed: 2026-11-04
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC fees-and-charges PDF, version dated 1 October 2025. Listed figures confirmed. Clarified that purchase interest is calculated from the transaction date when full payment is not received by the due date."
 ---
 # Fees and charges for OCBC credit cards
 
@@ -23,7 +23,7 @@ Version date: 1 October 2025.
 
 ## Interest
 
-- Purchases: 27.78% per annum. If full payment is not received by the due date, a minimum charge of S$2.50 a month applies.
+- Purchases: 27.78% per annum. If full payment is not received by the due date, interest is calculated from the transaction date, with a minimum charge of S$2.50 a month.
 - If the minimum payment is not received by the due date, the rate on the outstanding balance and new purchases rises to 30.78% per annum. It reverts to the prevailing rate once the account is not past due for the current and last two months.
 - Cash advances: 28.92% per annum on the amount withdrawn, compounded if monthly interest is not paid in full (minimum charge S$2.50).
 

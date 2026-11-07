@@ -7,10 +7,10 @@ effective_date: 2026-10-10
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/personal-banking/help-and-support/general/credit-card-bill-payment-changes"
-accessed: 2026-11-03
+accessed: 2026-11-07
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC bill-payment changes notice. Effective date, 17 affected organisations including ten Town Councils, alternative payment methods, app steps and continued credit-card use confirmed."
 ---
 # Changes to bill payments using OCBC credit cards
 

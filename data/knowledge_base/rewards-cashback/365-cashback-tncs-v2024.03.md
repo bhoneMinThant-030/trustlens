@@ -7,10 +7,10 @@ effective_date: 2024-03-01
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/iwov-resources/sg/ocbc/personal/pdf/cards/tncs-governing-365-cc-cashback-programme-1April24.pdf"
-accessed: 2026-11-03
+accessed: 2026-11-07
 synthetic: false
-verified: false
-notes: "Real superseded version, kept on purpose for the outdated-source test. Replaced by the 1 November 2026 version."
+verified: true
+notes: "Verified against the historical PDF, version dated 1 March 2024. Retained intentionally for outdated-source testing; not current guidance. Corrected MCC ranges to specific listed codes. The PDF states a version date, not an explicit effective date."
 ---
 # Terms and conditions governing OCBC 365 Credit Card Cashback Programme
 

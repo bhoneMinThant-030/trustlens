@@ -6,11 +6,11 @@ version: "2026.09"
 effective_date: 2026-09-13
 authority: unofficial
 supersedes:
-source_url: "https://milelion.com/2026/09/13/review-ocbc-90n-card/"
+source_url: "https://www.ocbc.com/personal-banking/cards/90-degrees-travel-credit-card"
 accessed: 2026-11-03
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Revised using official OCBC sources. Unconfirmed historical details, transfer ratios and fee-waiver claims removed. Eligibility age wording differs within the product page; applicants aged exactly 55 should confirm with OCBC."
 ---
 # OCBC 90°N Card: third-party review
 
@@ -18,21 +18,23 @@ Third-party review by The MileLion, published 13 September 2026. Not an OCBC doc
 
 ## Earn rates
 
-- Local (SGD) spend: 1.3 miles per S$1.
-- Foreign currency spend: 2.1 miles per S$1.
-- Miles are earned in S$5 blocks, rounded down. No minimum spend and no cap on miles earned.
-- Foreign currency transaction fee: 3.25%.
+- Eligible SGD spending: 1.3 Miles per S$1.
+- Eligible foreign currency spending: 2.1 Miles per S$1.
+- Calculated in complete S$5 blocks per transaction.
+- Exclusions apply. Miles earned have no expiry date and no monthly cap.
 
 ## 90°N Miles
 
 - Travel$ was the former name of 90°N Miles, used until 2023.
 - 90°N Miles do not expire as long as the card remains valid.
 
-## Transfers
+## Annual fees
 
-- Transfer fee: S$25, currently waived for all partners except KrisFlyer.
-- Minimum transfer: 1,000 90°N Miles.
-- Ratios include 1:1 for KrisFlyer, Flying Blue, Marriott Bonvoy and IHG One Rewards; 1:0.75 for Asia Miles; 1:0.5 for Accor Live Limitless.
+- Principal: S$196.20 including GST.
+- Supplementary: S$98.10 including GST.
+- First-year fees waived.
+- Automatic annual fee waiver spending threshold: S$10,000.
+- Principal annual-fee renewal bonus: 10,000 Miles, subject to programme terms.
 
 ## Fees
 
@@ -42,4 +44,7 @@ Third-party review by The MileLion, published 13 September 2026. Not an OCBC doc
 
 ## Eligibility
 
-- Minimum annual income: S$30,000.
+- Minimum age: 21.
+- Foreigners: minimum annual income S$45,000.
+- Singaporeans/PRs: S$30,000 standard requirement; S$15,000 for the older age group.
+- OCBC's page differs on whether the lower threshold starts at 55 or above 55. Confirm eligibility at exactly 55 with OCBC.

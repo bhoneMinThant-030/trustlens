@@ -3,14 +3,14 @@ doc_id: credit-card-income-eligibility
 title: "Credit card minimum income requirements"
 category: applying-eligibility
 version: "2026.11"
-effective_date: 2026-11-03
+effective_date: accessed 2026-11-04
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/personal-banking/cards/credit-card.page"
 accessed: 2026-11-03
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: pending
+notes: "Income amounts, minimum age, VOYAGE exceptions and approval statement checked against official OCBC sources. Age wording differs: the main credit-card page states 21–54 and 55 and above, while the 365 page states 21–55 and above 55. Keep verified: false pending clarification. The effective date is not confirmed by the sources."
 extra_sources: "https://www.ocbc.com/personal-banking/cards/365card.html"
 ---
 # Credit card minimum income requirements

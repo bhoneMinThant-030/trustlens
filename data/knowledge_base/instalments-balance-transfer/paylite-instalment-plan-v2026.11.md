@@ -7,10 +7,10 @@ effective_date: 2026-11-03
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/personal-banking/cards/card-services-interest-free-monthly-instalments-paylite.html"
-accessed: 2026-11-03
+accessed: 2026-11-07
 synthetic: false
-verified: false
-notes: "Summary of the official source with figures as published. Check against source_url, then set verified: true."
+verified: true
+notes: "Checked against the official OCBC PayLite page. Minimum transaction amount, eligibility exclusions, tenures, processing fees, EIRs and application steps confirmed. The page does not state an effective date."
 ---
 # OCBC PayLite instalment payment plan
 
