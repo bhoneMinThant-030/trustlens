@@ -5,6 +5,7 @@ try {
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
+const askRoutes = require("./routes/askRoutes");
 const {
   initDb,
   resetSeedData,
@@ -57,6 +58,9 @@ try {
   // Socket.io optional fallback
 }
 
+// Controllers in other files reach Socket.io with req.app.get("io")
+app.set("io", io);
+
 const PORT = process.env.PORT || 3000;
 const CONFIDENCE_THRESHOLD = parseFloat(process.env.CONFIDENCE_THRESHOLD || "0.7");
 
@@ -79,80 +83,10 @@ function getDemoUser(req) {
 // -------------------------------------------------------------
 
 /**
- * POST /api/ask
- * Officer asks a question; returns evaluated answer and auto-routes to review
+ * POST /api/ask (Backend 1)
+ * routes/askRoutes.js -> controllers/askController.js
  */
-app.post("/api/ask", (req, res) => {
-  try {
-    const { emailId, question } = req.body || {};
-    if (!question || !question.trim()) {
-      return res.status(400).json({
-        error: { code: "BAD_REQUEST", message: "Question cannot be empty." }
-      });
-    }
-
-    // Check if question already exists in DB
-    let existingAnswer = null;
-    if (emailId) {
-      existingAnswer = getAnswerByEmailId(emailId);
-    }
-
-    if (existingAnswer) {
-      return res.json(existingAnswer);
-    }
-
-    // Default mock response conforming to Section 1 & 2 of api-contract.md
-    const generatedQuestionId = "q_" + Date.now();
-    const generatedAnswerId = "a_" + Date.now();
-    const targetEmailId = emailId || "em_" + Date.now();
-
-    const confidence = 0.5; // Demo score below threshold
-    const needsReview = confidence < CONFIDENCE_THRESHOLD;
-
-    const reviewId = needsReview ? "r_" + Date.now() : null;
-
-    res.json({
-      questionId: generatedQuestionId,
-      answerId: generatedAnswerId,
-      emailId: targetEmailId,
-      type: "generated",
-      answer: "The annual fee waiver policy requires at least S$10,000 spend in the preceding 12 months.",
-      category: "fees-charges",
-      confidence,
-      claims: [
-        {
-          id: "c1",
-          text: "Annual fee waiver policy requires S$10,000 spend in preceding 12 months.",
-          label: "supported",
-          sourceId: "card-fees@2026.1#3",
-          quote: "annual spend of at least S$10,000 qualifies for an automatic annual fee waiver",
-          outdated: false,
-          reason: "Matches 2026 fee schedule."
-        }
-      ],
-      sources: [
-        {
-          id: "card-fees@2026.1#3",
-          docId: "card-fees",
-          title: "Credit card fees and charges",
-          version: "2026.1",
-          effectiveDate: "2026-03-01",
-          authority: "official",
-          category: "fees-charges",
-          excerpt: "The annual fee is waived for the first year. For subsequent years, an annual spend of at least S$10,000 qualifies for an automatic annual fee waiver.",
-          url: "https://www.ocbc.com/personal-banking/cards/cards-fee-charge.page"
-        }
-      ],
-      review: needsReview
-        ? { status: "pending", trigger: "auto_threshold", reviewId }
-        : null
-    });
-  } catch (err) {
-    res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: err.message }
-    });
-  }
-});
+app.use("/api/ask", askRoutes);
 
 /**
  * POST /api/answers/:answerId/review
@@ -351,6 +285,15 @@ app.post("/api/admin/reset", (req, res) => {
 // -------------------------------------------------------------
 // 0. ROOT & HEALTH
 // -------------------------------------------------------------
+
+/**
+ * GET /api/health (Backend 1)
+ * Quick check that the server is up
+ */
+app.get("/api/health", (req, res) => {
+  res.json({ message: "TrustLens backend is running!" });
+});
+
 app.get("/", (req, res) => {
   if (req.headers.accept && req.headers.accept.includes("text/html")) {
     return res.send(`
@@ -379,6 +322,7 @@ app.get("/", (req, res) => {
               <li><code>POST /api/reviews/:reviewId/decision</code> - Approve or correct flagged answer</li>
               <li><code>GET /api/stats</code> - Admin category pending counts</li>
               <li><code>GET /api/dashboard/categories</code> - Comprehensive 7-category breakdown</li>
+              <li><code>GET /api/health</code> - Server health check</li>
             </ul>
           </div>
         </body>
