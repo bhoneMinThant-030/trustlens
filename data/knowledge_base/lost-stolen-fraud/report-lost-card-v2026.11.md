@@ -3,7 +3,7 @@ doc_id: report-lost-card
 title: "Reporting a lost or stolen card"
 category: lost-stolen-fraud
 version: "2026.11"
-effective_date:
+effective_date: 2026-11-07
 authority: official
 supersedes:
 source_url: "https://www.ocbc.com/personal-banking/security/secure-banking-ways/report-lost-card"
