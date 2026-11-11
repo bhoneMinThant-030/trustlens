@@ -32,9 +32,17 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 ```json
 {
   "requestId": "q_123",
-  "question": "Can the annual fee on my card be waived?"
+  "question": "Can the annual fee on my card be waived?",
+  "approvedAnswers": [
+    { "id": "aa_017", "version": "2", "category": "fees-charges",
+      "question": "Is the annual fee waived?", "answer": "The annual fee is waived for the first year ..." }
+  ]
 }
 ```
+
+- `question`: at most 2,000 characters
+- `approvedAnswers` (optional): reviewer-approved wording. Node builds the list from SQLite `approved_answers` (`query_pattern` → `question`, `approved_text` → `answer`). Store the real question text, not keywords: matching compares questions
+- The Lambda never reads a database. No list, or an empty one, means no matching. Broken items are skipped, and at most 200 are used
 
 ### Response: generated answer
 
@@ -75,6 +83,9 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
       "effectiveDate": "2026-03-01",
       "authority": "official",
       "category": "fees-charges",
+      "cited": true,
+      "outdated": false,
+      "newerVersion": null,
       "excerpt": "The annual fee is waived for the first year ...",
       "url": "https://www.ocbc.com/..."
     }
@@ -86,6 +97,7 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 - `confidence` is also `0` when `relevance.answersQuestion` is `false`: true facts that answer a different question are not a trustworthy answer. Node's threshold rule then sends it to review
 - `quote`: the exact words from the cited passage behind the label (`null` for `insufficient_evidence`). A quote may join two parts of a passage with ` ... `. The Lambda checks every quote is really in a passage, with numbers and negations matching exactly. If Model B cited the wrong passage, `sourceId` is moved to the passage that contains the quote. If no passage contains it, the claim is downgraded to `insufficient_evidence`. Screens can highlight the quote inside the source excerpt
 - `outdated: true` means the cited document has been superseded by a newer version
+- `sources` lists every passage a claim cites (`cited: true`) first, then at most 3 uncited passages that matched the question well (`cited: false`, similarity 0.40 or more). Each source has `outdated` and `newerVersion` (the version that replaced it, or `null`), so screens can badge old documents even when no claim cites them
 - `safetyTextAltered: true` means fixed safety wording was changed by the AI
 - If no passage in the knowledge base matches the question, or the passages found do not answer it, `answer` says so, `claims` and `sources` are empty and `confidence` is `0`
 
@@ -98,12 +110,13 @@ Two extra fields, also returned (Node can store them; screens can ignore them):
   "checkerModel": "amazon.nova-pro-v1:0",
   "indexCreatedAt": "2026-11-06T12:00:00+00:00",
   "retrieval": [ { "id": "card-fees@2026.1#3", "score": 0.612 } ],
+  "approvedBestScore": 0.71,
   "latencyMs": 8400
 }
 ```
 
 - `relevance.answersQuestion`: Model B's view on whether the draft addresses what was asked, ignoring whether its facts are right (`true`, `false` or `null` if unknown). `false` sets `confidence` to `0`
-- `meta`: for debugging and the evaluation. `retrieval` is the passages found for the question, best first
+- `meta`: for debugging and the evaluation. `retrieval` is the passages found for the question, best first. `approvedBestScore` is the closest approved answer's similarity (`null` when none were sent), kept even when it is below the 0.85 needed for reuse
 
 ### Response: approved answer
 
@@ -121,7 +134,9 @@ Two extra fields, also returned (Node can store them; screens can ignore them):
 }
 ```
 
-- Approved-answer matching is **off** until the storage for approved answers is decided
+- Returned when the question matches an approved question with a similarity of **0.85 or more**. The wording is reused word for word, both models are skipped, and Node never sends it to review
+- `category` comes from the approved answer (`uncategorised` if it is not one of the shared values). `relevance` is `{ "answersQuestion": null, "reason": "" }`
+- If the approved list causes any error, the Lambda answers normally instead of failing
 
 ### Response: error
 
@@ -133,7 +148,7 @@ Codes: `BAD_REQUEST`, `BEDROCK_ERROR`, `INDEX_NOT_FOUND`, `INDEX_MISMATCH` (inde
 
 - Errors come back as a normal payload, so Node checks for an `error` key
 - A crash or a timeout (60 s) comes back with `FunctionError` set on the invoke result instead. Node treats both as `LAMBDA_FAILED`
-- A typical answer takes 5 to 15 s. Show a loading state on the officer screen
+- A typical answer takes 1 to 15 s (an approved answer about 1 s). Show a loading state on the officer screen
 
 ---
 

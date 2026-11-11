@@ -29,7 +29,8 @@ sys.path.insert(0, str(AI_DIR))
 CODE_FILES = ["handler.py", "retrieve.py", "llm.py", "checks.py", "approved.py"]
 REQUIRED_KEYS = ["EMBEDDING_MODEL_ID", "EMBEDDING_DIMENSIONS", "ANSWER_MODEL_ID",
                  "CHECKER_MODEL_ID", "S3_BUCKET", "S3_INDEX_KEY"]
-OPTIONAL_KEYS = ["TOP_K", "MIN_SCORE", "MAX_EVIDENCE", "ANSWER_SHOWS_METADATA", "APPROVED_MATCH_MIN"]
+OPTIONAL_KEYS = ["TOP_K", "MIN_SCORE", "MAX_EVIDENCE", "ANSWER_SHOWS_METADATA", "APPROVED_MATCH_MIN",
+                 "ALSO_FOUND_MIN"]
 
 
 def build_zip():
