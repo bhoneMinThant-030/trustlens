@@ -1,13 +1,15 @@
 """
 TrustLens AI service. AWS Lambda entry point: handler.lambda_handler
 
-Node invokes this function with {"requestId": "...", "question": "..."} and
-gets back the JSON in docs/api-contract.md (section 1, Node -> Lambda).
+Node invokes this function with
+    {"requestId": "...", "question": "...", "approvedAnswers": [...]}
+(approvedAnswers is optional) and gets back the JSON in docs/api-contract.md
+(section 1, Node -> Lambda).
 
 What happens for one question:
   1. Embed the question (Titan).
-  2. Approved answers: if one matches closely, return its wording as is.
-     Off until the storage is decided; see approved.py.
+  2. Approved answers: if one of those Node sent matches closely, return its
+     wording as is and skip both models. See approved.py.
   3. Retrieve the closest passages from the knowledge-base index.
   4. Model A (ANSWER_MODEL_ID) drafts a reply from those passages only.
   5. Retrieve again using the draft, so the checker also sees passages that
@@ -53,7 +55,7 @@ CATEGORIES = [
 LABELS = {"supported", "contradicted", "insufficient_evidence"}
 MAX_QUESTION_CHARS = 2000
 MAX_CLAIMS = 15
-MAX_SOURCES = 6
+MAX_ALSO_FOUND = 3  # uncited sources listed after the cited ones
 EXCERPT_CHARS = 1200
 
 NO_SOURCE_ANSWER = ("I could not find this in the approved OCBC information available to me, "
@@ -82,7 +84,8 @@ def lambda_handler(event, context=None):
     request_id = str(event.get("requestId") or "")
     try:
         question = _read_question(event)
-        result = {"requestId": request_id, **answer_question(question)}
+        approved_items = approved.clean(event.get("approvedAnswers"))
+        result = {"requestId": request_id, **answer_question(question, approved_items)}
         result["meta"]["latencyMs"] = int((time.monotonic() - started) * 1000)
         _log({"requestId": request_id, "type": result["type"], "confidence": result["confidence"],
               "claims": len(result["claims"]), "latencyMs": result["meta"]["latencyMs"]})
@@ -100,7 +103,7 @@ def lambda_handler(event, context=None):
         return _error(request_id, "INTERNAL_ERROR", f"{type(e).__name__}: {e}")
 
 
-def answer_question(question):
+def answer_question(question, approved_items=()):
     answer_model = _require("ANSWER_MODEL_ID")
     checker_model = _require("CHECKER_MODEL_ID")
     top_k = _setting("TOP_K", 6, int)
@@ -108,13 +111,14 @@ def answer_question(question):
 
     index = retrieve.load()  # fail on a missing index before paying for any model call
     meta = {"answerModel": answer_model, "checkerModel": checker_model,
-            "indexCreatedAt": index["createdAt"], "retrieval": []}
+            "indexCreatedAt": index["createdAt"], "retrieval": [], "approvedBestScore": None}
 
     q_vec = llm.embed(question)
 
-    match = approved.find_match(q_vec, llm.embed)
+    best_score, match = _match_approved(q_vec, approved_items)
+    meta["approvedBestScore"] = round(best_score, 3) if best_score is not None else None
     if match:
-        return _approved_response(match, meta)
+        return _approved_response(match, best_score, meta)
 
     q_hits = retrieve.search(q_vec, top_k, min_score)
     meta["retrieval"] = [{"id": c["id"], "score": round(s, 3)} for s, c in q_hits]
@@ -364,21 +368,27 @@ def _category(value, q_hits):
 
 
 def _sources(claims, q_hits, by_id):
-    """Every cited passage, then the top retrieved ones, up to MAX_SOURCES."""
-    ids = []
+    """Every cited passage first (in claim order), then at most MAX_ALSO_FOUND
+    uncited passages that matched the question well (score >= ALSO_FOUND_MIN).
+    Weak matches are left out so they don't distract the reviewer."""
+    min_score = _setting("ALSO_FOUND_MIN", 0.40, float)
+    cited = []
     for c in claims:
-        if c["sourceId"] and c["sourceId"] not in ids:
-            ids.append(c["sourceId"])
-    for _, chunk in q_hits:
-        if len(ids) >= MAX_SOURCES:
+        if c["sourceId"] and c["sourceId"] not in cited:
+            cited.append(c["sourceId"])
+    also_found = []
+    for score, chunk in q_hits:  # best first
+        if len(also_found) >= MAX_ALSO_FOUND or score < min_score:
             break
-        if chunk["id"] not in ids:
-            ids.append(chunk["id"])
+        if chunk["id"] not in cited and chunk["id"] not in also_found:
+            also_found.append(chunk["id"])
             by_id.setdefault(chunk["id"], chunk)
-    return [_source(by_id[i]) for i in ids]
+    return ([_source(by_id[i], cited=True) for i in cited]
+            + [_source(by_id[i], cited=False) for i in also_found])
 
 
-def _source(c):
+def _source(c, cited):
+    outdated = not c.get("isCurrent", True)
     return {
         "id": c["id"],
         "docId": c["docId"],
@@ -387,6 +397,9 @@ def _source(c):
         "effectiveDate": c["effectiveDate"],
         "authority": c["authority"],
         "category": c["category"],
+        "cited": cited,
+        "outdated": outdated,
+        "newerVersion": c.get("newerVersion") if outdated else None,
         "excerpt": _excerpt(c["text"]),
         "url": c.get("sourceUrl") or None,
     }
@@ -397,8 +410,19 @@ def _excerpt(text):
     return body if len(body) <= EXCERPT_CHARS else body[:EXCERPT_CHARS].rstrip() + "..."
 
 
-def _approved_response(match, meta):
-    score, item = match
+def _match_approved(q_vec, items):
+    """(best score, matching item or None). A problem with the approved list
+    must never block the officer, so any error means: answer normally."""
+    if not items:
+        return None, None
+    try:
+        return approved.find_match(q_vec, items, llm.embed)
+    except Exception as e:
+        _log({"warning": "approved_match_skipped", "error": f"{type(e).__name__}: {e}"})
+        return None, None
+
+
+def _approved_response(item, score, meta):
     return {
         "type": "approved",
         "answer": item["answer"],

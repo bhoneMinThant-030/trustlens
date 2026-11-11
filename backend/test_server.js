@@ -3,7 +3,7 @@
  * Executes in-process against Express without requiring open TCP ports.
  */
 const { app } = require("./server");
-const { resetSeedData } = require("./db");
+const { resetSeedData, db } = require("./db");
 
 function mockRequest(app, method, url, body = null, headers = {}) {
   return new Promise((resolve) => {
@@ -217,12 +217,73 @@ async function runTests() {
     JSON.stringify(t9.body)
   );
 
-  // Test 10: Admin Reset
-  const t10 = await mockRequest(app, "POST", "/api/admin/reset");
+  // Test 10: Admin Reset is blocked for non-admins and without confirmation
+  const t10a = await mockRequest(app, "POST", "/api/admin/reset", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer",
+    "x-confirm-reset": "yes"
+  });
+  const t10b = await mockRequest(app, "POST", "/api/admin/reset", null, {
+    "x-user-id": "admin-1",
+    "x-role": "admin"
+  });
   assert(
-    t10.status === 200 && t10.body.message?.includes("reset"),
-    "POST /api/admin/reset resets database state cleanly",
-    JSON.stringify(t10.body)
+    t10a.status === 403 && t10b.status === 400,
+    "POST /api/admin/reset rejects non-admins (403) and missing confirmation (400)",
+    JSON.stringify([t10a.body, t10b.body])
+  );
+
+  // Test 11: Admin Reset works for admin with confirmation
+  const t11 = await mockRequest(app, "POST", "/api/admin/reset", null, {
+    "x-user-id": "admin-1",
+    "x-role": "admin",
+    "x-confirm-reset": "yes"
+  });
+  assert(
+    t11.status === 200 && t11.body.message?.includes("reset"),
+    "POST /api/admin/reset resets database state cleanly for confirmed admin",
+    JSON.stringify(t11.body)
+  );
+
+  // Test 12: Dashboard lists uncategorised so totals add up
+  const t12 = await mockRequest(app, "GET", "/api/dashboard/categories", null, {
+    "x-user-id": "admin-1",
+    "x-role": "admin"
+  });
+  assert(
+    t12.status === 200 &&
+      Array.isArray(t12.body.categories) &&
+      t12.body.categories.length === 8 &&
+      t12.body.categories.some((c) => c.category === "uncategorised"),
+    "GET /api/dashboard/categories includes the uncategorised row (8 categories)",
+    JSON.stringify(t12.body)
+  );
+
+  // Test 13: Demo seed has unanswered emails for Generate live, all owned by officer-1
+  resetSeedData();
+  const t13 = await mockRequest(app, "GET", "/api/officer/emails", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  });
+  const emails = t13.body.emails || [];
+  const unanswered = emails.filter((e) => !e.answerId).map((e) => e.emailId).sort();
+  assert(
+    t13.status === 200 &&
+      emails.length === 13 &&
+      JSON.stringify(unanswered) === JSON.stringify(["em_009", "em_010", "em_011", "em_012", "em_013"]) &&
+      emails.every((e) => e.officerId === "officer-1"),
+    "Demo seed: 13 emails, em_009 to em_013 unanswered, all owned by officer-1",
+    JSON.stringify({ count: emails.length, unanswered, officers: [...new Set(emails.map((e) => e.officerId))] })
+  );
+
+  // Test 14: Approved answers seed has the late fee answer and never the 365 cashback trap
+  const approvedRows = db.prepare("SELECT id, category, query_pattern FROM approved_answers").all();
+  assert(
+    approvedRows.length === 1 &&
+      approvedRows[0].id === "aa_late_fee" &&
+      !approvedRows.some((r) => r.category === "rewards-cashback"),
+    "Approved answers seed: only aa_late_fee, no 365 cashback answer",
+    JSON.stringify(approvedRows)
   );
 
   console.log("\n-------------------------------------------------");
@@ -232,7 +293,7 @@ async function runTests() {
   if (failed > 0) {
     process.exit(1);
   } else {
-    console.log("ALL 10 TESTS PASSED WITH 100% SUCCESS!");
+    console.log("ALL TESTS PASSED!");
     process.exit(0);
   }
 }

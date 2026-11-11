@@ -1,15 +1,16 @@
 [
   {
-    "id": "aa_apply_card",
-    "version": "2026.1",
-    "category": "applying-eligibility",
-    "sampleQuestions": [
-      "How do I apply for a credit card?",
-      "What do I need to apply for an OCBC card?"
-    ],
-    "answer": "SYNTHETIC EXAMPLE: replace with approved wording from the official source.",
-    "sourceUrl": "https://www.ocbc.com/",
-    "owner": "admin-1",
-    "approvedAt": "2026-11-02"
+    "id": "aa_late_fee",
+    "version": "1",
+    "category": "fees-charges",
+    "question": "What is the late payment fee?",
+    "answer": "SYNTHETIC EXAMPLE. The late payment charge is S$100 if the minimum payment is not received by the payment due date."
+  },
+  {
+    "id": "aa_365_cap",
+    "version": "1",
+    "category": "rewards-cashback",
+    "question": "What is the monthly cashback cap on the OCBC 365 card?",
+    "answer": "SYNTHETIC EXAMPLE. Cashback on the OCBC 365 Credit Card is capped at S$160 per month, with no separate category caps."
   }
 ]

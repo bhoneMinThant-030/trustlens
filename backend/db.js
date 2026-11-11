@@ -12,7 +12,8 @@ const db = new Database(DB_PATH);
 db.pragma("foreign_keys = ON");
 db.pragma("journal_mode = WAL");
 
-// The 7 official OCBC Credit Card categories per docs/api-contract.md
+// The 7 official OCBC Credit Card categories per docs/api-contract.md, plus
+// "uncategorised", which the AI returns when no source matches the question
 const CATEGORIES = [
   "applying-eligibility",
   "card-types-benefits",
@@ -20,7 +21,8 @@ const CATEGORIES = [
   "rewards-cashback",
   "payments-billing",
   "instalments-balance-transfer",
-  "lost-stolen-fraud"
+  "lost-stolen-fraud",
+  "uncategorised"
 ];
 
 /**
@@ -442,7 +444,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_103",
       emailId: "em_003",
-      officerId: "officer-2",
+      officerId: "officer-1",
       customerName: "Ahmad bin Yusof",
       customerEmail: "ahmad.y@example.com",
       cardType: "OCBC Titanium Rewards",
@@ -500,7 +502,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_104",
       emailId: "em_004",
-      officerId: "officer-2",
+      officerId: "officer-1",
       customerName: "Fiona Heng",
       customerEmail: "fiona.heng@example.com",
       cardType: "FRANK Card",
@@ -567,7 +569,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_105",
       emailId: "em_005",
-      officerId: "officer-3",
+      officerId: "officer-1",
       customerName: "Tan Wei Ling",
       customerEmail: "tan.weiling@example.com",
       cardType: "OCBC 365 Card",
@@ -634,7 +636,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_106",
       emailId: "em_006",
-      officerId: "officer-3",
+      officerId: "officer-1",
       customerName: "Siti Nurhaliza",
       customerEmail: "siti.n@example.com",
       cardType: "OCBC 365 Card",
@@ -678,7 +680,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_107",
       emailId: "em_007",
-      officerId: "officer-4",
+      officerId: "officer-1",
       customerName: "Rachel Wong",
       customerEmail: "rachel.wong@example.com",
       cardType: "OCBC 90N Card",
@@ -722,7 +724,7 @@ function seedInitialDataIfEmpty() {
     insertQuestion.run({
       id: "q_108",
       emailId: "em_008",
-      officerId: "officer-4",
+      officerId: "officer-1",
       customerName: "Benjamin Lee",
       customerEmail: "benjamin.lee@example.com",
       cardType: "OCBC 365 Card",
@@ -748,14 +750,50 @@ function seedInitialDataIfEmpty() {
 
     claims108.forEach((c) => insertClaim.run({ ...c, answerId: "a_108" }));
 
-    // Pre-approved FAQ Cache
+    // Pre-approved answers (reused word for word by the AI when a new question
+    // matches closely). Never put the 365 cashback cap here: that question is a
+    // planted trap and must go through the checker.
     insertApproved.run({
-      id: "aa_fee_waiver",
+      id: "aa_late_fee",
       category: "fees-charges",
-      queryPattern: "annual fee waiver spend requirement",
-      approvedText: "Annual fees are waived if your retail spend reaches S$10,000 in the preceding 12 months.",
-      version: "2026.1",
+      queryPattern: "What is the late payment fee?",
+      approvedText: "The late payment charge is S$100 if the minimum payment is not received by the payment due date.",
+      version: "2025.10",
       createdAt: now
+    });
+
+    // -------------------------------------------------------------
+    // Unanswered emails: the officer clicks Generate on these live.
+    // No answer row, so the inbox shows them with status null.
+    // -------------------------------------------------------------
+    const unanswered = [
+      // matches aa_late_fee, so the AI reuses the approved answer
+      ["q_109", "em_009", "Priya Nair", "priya.nair@example.com", "OCBC 365 Card", "fees-charges",
+        "What is the late payment fee on my card?", "2026-11-11T09:05:00+08:00"],
+      ["q_110", "em_010", "Jason Lim", "jason.lim@example.com", "OCBC 90N Card", "payments-billing",
+        "What is the minimum monthly payment on my credit card?", "2026-11-11T09:20:00+08:00"],
+      ["q_111", "em_011", "Nur Aisyah", "nur.aisyah@example.com", "FRANK Card", "fees-charges",
+        "How do I request a credit card fee waiver?", "2026-11-11T09:35:00+08:00"],
+      // planted trap: official T&Cs say S$160, unofficial staff notes say S$250
+      ["q_112", "em_012", "Kenneth Ong", "kenneth.ong@example.com", "OCBC 365 Card", "rewards-cashback",
+        "What is the monthly cashback cap on the OCBC 365 card?", "2026-11-11T09:50:00+08:00"],
+      // no source in the knowledge base, so it always goes to review
+      ["q_113", "em_013", "Grace Chua", "grace.chua@example.com", "OCBC VOYAGE Card", "uncategorised",
+        "Can I use my credit card to buy cryptocurrency?", "2026-11-11T10:05:00+08:00"]
+    ];
+
+    unanswered.forEach(([id, emailId, customerName, customerEmail, cardType, category, question, createdAt]) => {
+      insertQuestion.run({
+        id,
+        emailId,
+        officerId: "officer-1",
+        customerName,
+        customerEmail,
+        cardType,
+        category,
+        question,
+        createdAt
+      });
     });
   });
 
