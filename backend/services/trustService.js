@@ -1,27 +1,35 @@
+
 function checkTrustStatus(lambdaResponse) {
     const threshold = Number(
         process.env.CONFIDENCE_THRESHOLD || 0.7
     );
 
-    // Approved answers do not require automatic review
+    // Approved answers never require automatic review
     if (lambdaResponse.type === "approved") {
         return null;
     }
 
-    if (lambdaResponse.confidence < threshold) {
-        return "auto_threshold";
+    // Priority 1: Safety wording changed
+    if (lambdaResponse.safetyTextAltered === true) {
+        return "auto_safety";
     }
 
-    const hasContradiction = lambdaResponse.claims.some(
-        claim => claim.label === "contradicted"
-    );
+    // Priority 2: Contradicted claims
+    const hasContradiction = Array.isArray(lambdaResponse.claims) &&
+        lambdaResponse.claims.some(
+            claim => claim.label === "contradicted"
+        );
 
     if (hasContradiction) {
         return "auto_contradiction";
     }
 
-    if (lambdaResponse.safetyTextAltered === true) {
-        return "auto_safety";
+    // Priority 3: Low confidence
+    if (
+        typeof lambdaResponse.confidence === "number" &&
+        lambdaResponse.confidence < threshold
+    ) {
+        return "auto_threshold";
     }
 
     return null;
