@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createApprovedAnswer, listApprovedAnswers, listReviews } from '../../api/backoffice'
 import { CATEGORIES, categoryLabel } from '../../constants/labels'
+import { SearchIcon } from './Icons'
 
 /*
   Approved answers tab (admin).
@@ -85,7 +86,7 @@ function ApprovedAnswers({ user }) {
                 </small>
               </div>
               <button
-                className="bo-secondary-button"
+                className="bo-primary-button bo-small-button"
                 disabled={savingId === review.id || user.role !== 'admin'}
                 onClick={() => promote(review)}
               >
@@ -97,13 +98,16 @@ function ApprovedAnswers({ user }) {
       )}
 
       <div className="bo-filter-row bo-approved-filters">
-        <input
-          className="bo-search"
-          type="search"
-          placeholder="Search questions or wording"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <label className="bo-search">
+          <SearchIcon size={18} />
+          <input
+            type="search"
+            aria-label="Search questions or wording"
+            placeholder="Search questions or wording"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
         <select
           aria-label="Filter by category"
           value={category}
@@ -124,12 +128,15 @@ function ApprovedAnswers({ user }) {
         {visible.map((answer) => (
           <article className="bo-card bo-approved-card" key={answer.id}>
             <div className="bo-approved-top">
-              <div className="bo-pill-row">
-                <span className="bo-pill bo-status-approved">Approved answer</span>
-                <span className="bo-pill">v{answer.version}</span>
-                <span className="bo-pill">{categoryLabel(answer.category)}</span>
+              <div className="bo-approved-title">
+                <strong>{categoryLabel(answer.category)}</strong>
+                <span className="bo-mono">
+                  {answer.id} · v{answer.version}
+                </span>
               </div>
-              <span className="bo-muted">Used {answer.timesUsed} times</span>
+              <span className="bo-approved-used">
+                Used <strong>{answer.timesUsed}</strong> {answer.timesUsed === 1 ? 'time' : 'times'}
+              </span>
             </div>
 
             <ul className="bo-sample-questions">
@@ -141,7 +148,7 @@ function ApprovedAnswers({ user }) {
             <p className="bo-answer-box">{answer.answer}</p>
 
             <p className="bo-muted">
-              {answer.id} · approved by {answer.owner} on {answer.approvedAt}
+              Approved by {answer.owner} on {answer.approvedAt}
               {answer.fromReviewId && ` · from review ${answer.fromReviewId}`}
               {answer.sourceUrl && (
                 <>
