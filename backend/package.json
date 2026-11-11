@@ -18,5 +18,8 @@
   },
   "allowScripts": {
     "better-sqlite3@11.10.0": true
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
   }
 }

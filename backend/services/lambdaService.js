@@ -1,3 +1,13 @@
+
+const {
+    LambdaClient,
+    InvokeCommand
+} = require("@aws-sdk/client-lambda");
+
+const lambdaClient = new LambdaClient({
+    region: process.env.AWS_REGION || "ap-southeast-2"
+});
+
 function getMockLambdaResponse(requestId, question) {
     return {
         requestId: requestId,
@@ -42,4 +52,61 @@ function getMockLambdaResponse(requestId, question) {
     };
 }
 
-module.exports = { getMockLambdaResponse };
+
+async function invokeLambda(requestId, question) {
+    // Keep mock mode for testing
+    if (process.env.USE_MOCK_LAMBDA !== "false") {
+        return getMockLambdaResponse(requestId, question);
+    }
+
+    try {
+        const command = new InvokeCommand({
+            FunctionName:
+                process.env.LAMBDA_FUNCTION_NAME || "trustlens-ai",
+            InvocationType: "RequestResponse",
+            Payload: Buffer.from(
+                JSON.stringify({
+                    requestId,
+                    question
+                })
+            )
+        });
+
+        const result = await lambdaClient.send(command);
+
+        // AWS Lambda may return a function-level error
+        if (result.FunctionError) {
+            throw new Error("Lambda execution failed.");
+        }
+
+        // Decode and parse the Lambda response
+        const responseText = Buffer.from(
+            result.Payload || []
+        ).toString("utf-8");
+
+        const response = JSON.parse(responseText);
+
+        // Lambda may return a handled error
+        if (response.error) {
+            throw new Error(
+                response.error.message || "Lambda returned an error."
+            );
+        }
+
+        return response;
+
+    } catch (error) {
+        console.error("Lambda invocation failed:", error.message);
+
+        const lambdaError = new Error("AI service is unavailable.");
+        lambdaError.status = 502;
+        lambdaError.code = "LAMBDA_FAILED";
+
+        throw lambdaError;
+    }
+}
+
+module.exports = {
+    getMockLambdaResponse,
+    invokeLambda
+};
