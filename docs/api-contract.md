@@ -243,6 +243,74 @@ Response: the updated `Review`, with:
 }
 ```
 
+### `GET /api/officer/emails` (officer)
+
+Inbox list. Every email, with its answer status if one exists.
+
+```json
+{
+  "emails": [
+    {
+      "id": "em_001",
+      "questionId": "em_001",
+      "emailId": "em_001",
+      "officerId": "officer-1",
+      "customerName": "Tan Wei Ming",
+      "customerEmail": "weiming@example.com",
+      "cardType": "OCBC 365 Card",
+      "category": "rewards-cashback",
+      "question": "...",
+      "createdAt": "2026-11-05T09:12:00+08:00",
+      "answerId": "a_001",
+      "status": "pending_review",
+      "confidence": 0.62,
+      "review": { "reviewId": "r_001", "status": "pending", "trigger": "auto_threshold" }
+    }
+  ]
+}
+```
+
+- `answerId`, `status` and `confidence` are `null` while the email has no answer yet (the officer can click Generate)
+- `review` is `null` when the answer has no review
+- `status` is an answer status: `pending_review` · `approved` · `reviewed_approved` · `reviewed_corrected`
+
+### `GET /api/officer/emails/:emailId/answer` (officer)
+
+The stored answer for one email, in the same shape as the `POST /api/ask` response (including `review`).
+
+- HTTP 404 with `NOT_FOUND` if the email has no answer yet
+
+### `GET /api/dashboard/categories` (admin)
+
+Metrics for every category, including `uncategorised`. Counts include both seeded and live answers.
+
+```json
+{
+  "summary": { "totalItems": 12, "totalPending": 5 },
+  "categories": [
+    {
+      "category": "fees-charges",
+      "totalQueries": 3,
+      "pendingReviews": 1,
+      "reviewedCount": 1,
+      "autoApprovedCount": 1,
+      "reviewRatePct": 67
+    }
+  ]
+}
+```
+
+- `categories` always has 8 entries (the 7 categories plus `uncategorised`), even when a count is 0
+- `reviewRatePct` = (`pendingReviews` + `reviewedCount`) / `totalQueries`, rounded, `0` when there are no queries
+
+### `POST /api/admin/reset` (admin)
+
+Wipes all data and reloads the demo seed data. Use between demo runs only.
+
+- Requires `X-Role: admin` and the header `X-Confirm-Reset: yes`
+- Success: `{ "message": "Database reset to initial seed state." }`
+- HTTP 403 `FORBIDDEN` for any other role, HTTP 400 `CONFIRMATION_REQUIRED` without the confirmation header
+
 ---
 
 ## 3. Live events (Socket.io)
@@ -252,7 +320,7 @@ Response: the updated `Review`, with:
 | `review:new` | `reviewers` | `{ reviewId, category, trigger, question, createdAt }` |
 | `review:resolved` | `officer:<officerId>` | `{ reviewId, questionId, emailId, decision, correctedAnswer, reason, reviewer }` |
 
-- Reviewers join `reviewers` on connect; each officer joins `officer:<officerId>`
+- Reviewers join `reviewers` on connect (`io(url, { query: { role: "reviewer" } })`); each officer joins `officer:<officerId>` (`io(url, { query: { userId: "officer-1" } })`)
 - Sprint 2: events may be stubbed. Sprint 3: wired to the screens
 
 ## Open points for the sync
