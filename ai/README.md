@@ -10,7 +10,7 @@ Owner: Lead
 | `retrieve.py` | Loads the index from S3 once per container and ranks chunks by cosine similarity |
 | `llm.py` | Bedrock calls: embeddings and chat |
 | `checks.py` | Checks done in code: fixed safety wording, and that each quote is really in its cited passage |
-| `approved.py` | Approved-answer matching. Off until storage is decided |
+| `approved.py` | Reuses reviewer-approved wording. Node sends the approved answers in each request; the Lambda never reads a database |
 | `prompts/` | Prompts for Model A (`answer.txt`) and Model B (`check.txt`) |
 | `ingest.py` | Builds the search index from `data/knowledge_base/` and uploads it to S3 |
 | `run_local.py` | Runs the handler on your machine with real AWS calls |
@@ -26,6 +26,7 @@ pip install -r ai/requirements.txt
 python -m unittest discover -s ai/tests -v          # offline tests
 python ai/run_local.py "Is there a late payment fee?"   # one real question
 python ai/run_local.py --json "..."                  # the exact JSON Node receives
+python ai/run_local.py --approved data/approved_answers/approved_answers.example.json "What is the late payment fee?"
 python ai/deploy.py --smoke "Is there a late payment fee?"   # deploy, then test on Lambda
 python ai/ingest.py                                  # rebuild the index after KB changes
 ```
@@ -46,8 +47,8 @@ python ai/ingest.py                                  # rebuild the index after K
 | `MIN_SCORE` | 0.2 | Minimum similarity for a passage to count as a match |
 | `MAX_EVIDENCE` | 12 | Passages shown to Model B |
 | `ANSWER_SHOWS_METADATA` | false | Let Model A see authority and version (off: TrustLens does that job) |
-| `APPROVED_ANSWERS_FILE` | not set | Local JSON of approved answers, for testing the approved path |
 | `APPROVED_MATCH_MIN` | 0.85 | Minimum similarity to reuse an approved answer |
+| `ALSO_FOUND_MIN` | 0.40 | Minimum similarity for an uncited source to be listed (at most 3) |
 
 ## Rules
 

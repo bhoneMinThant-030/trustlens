@@ -5,6 +5,8 @@ Usage (from the repo root):
   python ai/run_local.py "Can the annual fee on my card be waived?"
   python ai/run_local.py --json "..."                  # raw JSON, exactly what Node receives
   python ai/run_local.py --index ai/index.json "..."   # local index from: python ai/ingest.py --local
+  python ai/run_local.py --approved approved.json "..." # send approved answers, the way Node will
+    (approved.json = [{"id", "version", "category", "question", "answer"}, ...])
 
 Settings come from ai/.env. Credentials come from your default AWS CLI
 profile (bhone-admin); use --profile to pick another. Each run makes about
@@ -75,10 +77,22 @@ def print_summary(result, threshold=0.7):
         if rel.get("reason"):
             print(wrap("relevance: " + rel["reason"]))
 
+        if result["sources"]:
+            print("\nSources:")
+            for s in result["sources"]:
+                flags = ["cited" if s.get("cited") else "also found"]
+                if s.get("outdated"):
+                    flags.append(f"OUTDATED, replaced by {s.get('newerVersion')}")
+                if s["authority"] == "unofficial":
+                    flags.append("UNOFFICIAL")
+                print(f"  {s['id']}  [{', '.join(flags)}]")
+
     reasons = review_reasons(result, threshold)
     print(f"Goes to review (threshold {threshold}): {'YES - ' + ', '.join(reasons) if reasons else 'no'}")
 
     meta = result.get("meta", {})
+    if meta.get("approvedBestScore") is not None and result["type"] != "approved":
+        print(f"\nClosest approved answer scored {meta['approvedBestScore']} (needs 0.85 to be reused)")
     if meta.get("retrieval"):
         top = ", ".join(f"{r['id']} {r['score']}" for r in meta["retrieval"][:3])
         print(f"\nTop passages: {top}")
@@ -93,6 +107,7 @@ def main():
     ap.add_argument("--index", help="use a local index.json instead of the one in S3")
     ap.add_argument("--profile", help="AWS CLI profile to use (default: your default profile)")
     ap.add_argument("--threshold", type=float, default=0.7, help="review threshold for the preview")
+    ap.add_argument("--approved", help="JSON file with approved answers to send, the way Node will")
     args = ap.parse_args()
 
     try:
@@ -109,7 +124,11 @@ def main():
 
     import handler
     handler._log = lambda record: None  # the one-line CloudWatch log is noise here
-    result = handler.lambda_handler({"requestId": "local-1", "question": args.question})
+    event = {"requestId": "local-1", "question": args.question}
+    if args.approved:
+        with open(args.approved, encoding="utf-8") as f:
+            event["approvedAnswers"] = json.load(f)
+    result = handler.lambda_handler(event)
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:

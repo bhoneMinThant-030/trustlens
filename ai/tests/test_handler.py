@@ -35,6 +35,7 @@ TOP_KEYS = {"requestId", "type", "answer", "category", "confidence", "safetyText
             "claims", "sources", "relevance", "meta"}
 CLAIM_KEYS = {"id", "text", "label", "sourceId", "quote", "outdated", "reason"}
 SOURCE_KEYS = {"id", "docId", "title", "version", "effectiveDate", "authority", "category",
+               "cited", "outdated", "newerVersion",
                "excerpt", "url"}
 
 
@@ -124,7 +125,6 @@ class HandlerTests(unittest.TestCase):
             "INDEX_PATH": self.index_path, "MIN_SCORE": "0.05",
         })
         self.env.start()
-        os.environ.pop("APPROVED_ANSWERS_FILE", None)
         retrieve.reset()
         approved._vectors.clear()
         mock.patch.object(llm, "embed", side_effect=fake_embed).start()
@@ -134,9 +134,12 @@ class HandlerTests(unittest.TestCase):
         mock.patch.stopall()
         retrieve.reset()
 
-    def ask(self, question, fakes):
+    def ask(self, question, fakes, approved_answers=None):
+        event = {"requestId": "t1", "question": question}
+        if approved_answers is not None:
+            event["approvedAnswers"] = approved_answers
         with mock.patch.object(llm, "chat", side_effect=fakes.chat):
-            return handler.lambda_handler({"requestId": "t1", "question": question})
+            return handler.lambda_handler(event)
 
     # ----- normal answers and scoring -----
 
@@ -413,26 +416,121 @@ class HandlerTests(unittest.TestCase):
         self.assertEqual(r["error"]["code"], "INTERNAL_ERROR")
         self.assertIn("CHECKER_MODEL_ID", r["error"]["message"])
 
-    # ----- approved answers -----
+    # ----- approved answers (sent by Node in the request) -----
+
+    LATE_FEE = {"id": "aa_late_fee", "version": "3", "category": "fees-charges",
+                "question": "What is the late payment fee?",
+                "answer": "The late payment fee is S$100."}
 
     def test_approved_answer_match(self):
-        path = os.path.join(self.tmp.name, "approved.json")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump([{"id": "aa_late_fee", "version": "2026.1", "category": "fees-charges",
-                        "sampleQuestions": ["What is the late payment fee?"],
-                        "answer": "The late payment fee is S$100."}], f)
-        os.environ["APPROVED_ANSWERS_FILE"] = path
         fakes = Fakes("unused", lambda ids, by_id: verdict([]))
-        r = self.ask("What is the late payment fee?", fakes)
+        r = self.ask("What is the late payment fee?", fakes, [self.LATE_FEE])
         self.assertEqual(r["type"], "approved")
+        self.assertEqual(r["answer"], "The late payment fee is S$100.", "wording is reused word for word")
         self.assertIsNone(r["confidence"])
-        self.assertEqual(r["approvedAnswer"]["id"], "aa_late_fee")
-        self.assertEqual(r["approvedAnswer"]["matchScore"], 1.0)
+        self.assertEqual(r["approvedAnswer"], {"id": "aa_late_fee", "version": "3", "matchScore": 1.0})
+        self.assertEqual(r["category"], "fees-charges")
+        self.assertEqual(r["claims"], [])
         self.assertEqual(fakes.calls, [], "approved answers skip both models")
+        self.assertEqual(r["meta"]["approvedBestScore"], 1.0)
 
-        r = self.ask("How do I report a lost card?",
-                     Fakes("Draft.", lambda ids, by_id: verdict([])))
-        self.assertEqual(r["type"], "generated", "unrelated question does not match")
+    def test_near_miss_below_threshold_answers_normally(self):
+        os.environ["APPROVED_MATCH_MIN"] = "0.99"
+        fakes = Fakes("Draft.", lambda ids, by_id: verdict([]))
+        r = self.ask("What is the late payment fee for balance transfers?", fakes, [self.LATE_FEE])
+        self.assertEqual(r["type"], "generated")
+        self.assertIn("test-answer", fakes.calls)
+        best = r["meta"]["approvedBestScore"]
+        self.assertTrue(best is not None and best < 0.99, "best score is kept for tuning")
+
+    def test_no_list_or_empty_list_answers_normally(self):
+        for approved_answers in (None, [], "not a list"):
+            r = self.ask("What is the late payment fee?",
+                         Fakes("Draft.", lambda ids, by_id: verdict([])), approved_answers)
+            self.assertEqual(r["type"], "generated", approved_answers)
+            self.assertIsNone(r["meta"]["approvedBestScore"])
+
+    def test_broken_items_are_skipped(self):
+        broken = [{"id": "x"}, {"question": "What is the late payment fee?", "answer": "S$100"},
+                  {"id": "y", "question": "  ", "answer": "S$100"}, "junk", 42]
+        r = self.ask("What is the late payment fee?",
+                     Fakes("unused", lambda ids, by_id: verdict([])), broken + [self.LATE_FEE])
+        self.assertEqual(r["type"], "approved")
+        self.assertEqual(r["approvedAnswer"]["id"], "aa_late_fee")
+
+    def test_unknown_category_becomes_uncategorised(self):
+        item = dict(self.LATE_FEE, category="space-travel")
+        r = self.ask("What is the late payment fee?",
+                     Fakes("unused", lambda ids, by_id: verdict([])), [item])
+        self.assertEqual(r["category"], "uncategorised")
+
+    def test_embedding_failure_on_approved_list_answers_normally(self):
+        def embed(text):
+            if text == "Approved question that breaks":
+                raise llm.BedrockError("throttled")
+            return fake_embed(text)
+        item = dict(self.LATE_FEE, id="aa_broken", question="Approved question that breaks")
+        with mock.patch.object(llm, "embed", side_effect=embed):
+            r = self.ask("What is the late payment fee?",
+                         Fakes("Draft.", lambda ids, by_id: verdict([])), [item])
+        self.assertNotIn("error", r)
+        self.assertEqual(r["type"], "generated")
+
+    def test_each_approved_question_is_embedded_once(self):
+        calls = []
+        def embed(text):
+            calls.append(text)
+            return fake_embed(text)
+        item = dict(self.LATE_FEE, id="aa_cache_test", question="How do I report a lost card?")
+        with mock.patch.object(llm, "embed", side_effect=embed):
+            for _ in range(2):
+                self.ask("What is the late payment fee?",
+                         Fakes("Draft.", lambda ids, by_id: verdict([])), [item])
+        self.assertEqual(calls.count("How do I report a lost card?"), 1)
+
+    def test_list_is_capped(self):
+        many = [dict(self.LATE_FEE, id=f"aa_{i}", question=f"Question number {i}") for i in range(250)]
+        self.assertEqual(len(approved.clean(many)), approved.MAX_ITEMS)
+
+    # ----- sources: cited, outdated, also found -----
+
+    def chunk(self, cid, doc, current=True, newer=None):
+        return {"id": cid, "docId": doc, "title": doc, "version": "v", "effectiveDate": "2026-01-01",
+                "authority": "official", "category": "fees-charges", "text": "Title\n\nBody",
+                "sourceUrl": "", "isCurrent": current, "newerVersion": newer}
+
+    def test_sources_cited_first_then_close_matches(self):
+        cited = self.chunk("fees@2025#2", "fees")
+        old = self.chunk("fees@2023#2", "fees", current=False, newer="2025.10")
+        weak = self.chunk("instalments@2026#5", "instalments")
+        extra = [self.chunk(f"other@1#{i}", "other") for i in range(5)]
+        q_hits = [(0.49, old), (0.45, cited)] + [(0.44, c) for c in extra] + [(0.27, weak)]
+        claims = [{"sourceId": "fees@2025#2"}]
+        out = handler._sources(claims, q_hits, {"fees@2025#2": cited})
+        self.assertEqual(out[0]["id"], "fees@2025#2")
+        self.assertTrue(out[0]["cited"])
+        also = [s for s in out if not s["cited"]]
+        self.assertEqual(len(also), handler.MAX_ALSO_FOUND, "at most 3 uncited sources")
+        self.assertEqual(also[0]["id"], "fees@2023#2", "uncited sources are ordered by score")
+        self.assertTrue(also[0]["outdated"])
+        self.assertEqual(also[0]["newerVersion"], "2025.10")
+        self.assertNotIn("instalments@2026#5", [s["id"] for s in out], "weak matches are dropped")
+
+    def test_current_source_has_no_newer_version(self):
+        out = handler._sources([{"sourceId": "a@1#1"}], [], {"a@1#1": self.chunk("a@1#1", "a")})
+        self.assertFalse(out[0]["outdated"])
+        self.assertIsNone(out[0]["newerVersion"])
+
+    def test_cited_outdated_source_is_flagged(self):
+        def checker(ids, by_id):
+            old = first(ids, by_id, docId="paylite-instalment-plan", isCurrent=False)
+            return verdict([claim("PayLite can run for 24 months.", "supported", old)])
+        r = self.ask("Can I repay PayLite over 24 months with a 1% to 3% fee?",
+                     Fakes("PayLite can run for 24 months.", checker))
+        src = next(s for s in r["sources"] if s["id"] == r["claims"][0]["sourceId"])
+        self.assertTrue(src["cited"])
+        self.assertTrue(src["outdated"])
+        self.assertTrue(src["newerVersion"])
 
 
 class QuoteCheckTests(unittest.TestCase):
