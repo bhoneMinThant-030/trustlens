@@ -3,7 +3,7 @@
  * Executes in-process against Express without requiring open TCP ports.
  */
 const { app } = require("./server");
-const { resetSeedData } = require("./db");
+const { resetSeedData, db } = require("./db");
 
 function mockRequest(app, method, url, body = null, headers = {}) {
   return new Promise((resolve) => {
@@ -257,6 +257,33 @@ async function runTests() {
       t12.body.categories.some((c) => c.category === "uncategorised"),
     "GET /api/dashboard/categories includes the uncategorised row (8 categories)",
     JSON.stringify(t12.body)
+  );
+
+  // Test 13: Demo seed has unanswered emails for Generate live, all owned by officer-1
+  resetSeedData();
+  const t13 = await mockRequest(app, "GET", "/api/officer/emails", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  });
+  const emails = t13.body.emails || [];
+  const unanswered = emails.filter((e) => !e.answerId).map((e) => e.emailId).sort();
+  assert(
+    t13.status === 200 &&
+      emails.length === 13 &&
+      JSON.stringify(unanswered) === JSON.stringify(["em_009", "em_010", "em_011", "em_012", "em_013"]) &&
+      emails.every((e) => e.officerId === "officer-1"),
+    "Demo seed: 13 emails, em_009 to em_013 unanswered, all owned by officer-1",
+    JSON.stringify({ count: emails.length, unanswered, officers: [...new Set(emails.map((e) => e.officerId))] })
+  );
+
+  // Test 14: Approved answers seed has the late fee answer and never the 365 cashback trap
+  const approvedRows = db.prepare("SELECT id, category, query_pattern FROM approved_answers").all();
+  assert(
+    approvedRows.length === 1 &&
+      approvedRows[0].id === "aa_late_fee" &&
+      !approvedRows.some((r) => r.category === "rewards-cashback"),
+    "Approved answers seed: only aa_late_fee, no 365 cashback answer",
+    JSON.stringify(approvedRows)
   );
 
   console.log("\n-------------------------------------------------");
