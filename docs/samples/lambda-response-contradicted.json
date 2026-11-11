@@ -1,0 +1,123 @@
+{
+  "requestId": "q_sample",
+  "type": "generated",
+  "answer": "The OCBC 365 card has a monthly cashback cap of S$250, with no category limits.",
+  "category": "rewards-cashback",
+  "confidence": 0.0,
+  "safetyTextAltered": false,
+  "claims": [
+    {
+      "id": "c1",
+      "text": "The OCBC 365 card has a monthly cashback cap of S$250, with no category limits.",
+      "label": "contradicted",
+      "sourceId": "ocbc-365-card@2026.11#2",
+      "quote": "Total cashback is capped at S$160 per month from 1 November 2026, with no separate category caps.",
+      "outdated": false,
+      "reason": "The current official passage states the cap is S$160, not S$250."
+    }
+  ],
+  "sources": [
+    {
+      "id": "ocbc-365-card@2026.11#2",
+      "docId": "ocbc-365-card",
+      "title": "OCBC 365 Credit Card: features, fees and eligibility",
+      "version": "2026.11",
+      "effectiveDate": "2026-11-01",
+      "authority": "official",
+      "category": "card-types-benefits",
+      "excerpt": "- Minimum spend of S$800 per calendar month to earn the 6% rate. If it is not met, the 0.25% base rate applies.\n- Total cashback is capped at S$160 per month from 1 November 2026, with no separate category caps.",
+      "url": "https://www.ocbc.com/personal-banking/cards/365card.html"
+    },
+    {
+      "id": "365-cashback-staff-quick-reference@2026.10#2",
+      "docId": "365-cashback-staff-quick-reference",
+      "title": "Staff quick reference: OCBC 365 cashback",
+      "version": "2026.10",
+      "effectiveDate": "2026-10-15",
+      "authority": "unofficial",
+      "category": "rewards-cashback",
+      "excerpt": "The OCBC 365 card has a monthly cashback cap of S$250, with no category limits.",
+      "url": null
+    },
+    {
+      "id": "ocbc-365-card@2024.01#2",
+      "docId": "ocbc-365-card",
+      "title": "OCBC 365 Credit Card: features, fees and eligibility",
+      "version": "2024.01",
+      "effectiveDate": "2024-01-01",
+      "authority": "official",
+      "category": "card-types-benefits",
+      "excerpt": "- Minimum spend of S$800 per calendar month to earn the bonus rates.\n- Total cashback is capped at S$80 per month.",
+      "url": null
+    },
+    {
+      "id": "ocbc-365-card@2024.01#1",
+      "docId": "ocbc-365-card",
+      "title": "OCBC 365 Credit Card: features, fees and eligibility",
+      "version": "2024.01",
+      "effectiveDate": "2024-01-01",
+      "authority": "official",
+      "category": "card-types-benefits",
+      "excerpt": "- 5% cashback on dining.\n- 3% cashback on groceries, land transport, recurring telco and electricity bills, and streaming.\n- 6% cashback on petrol.\n- 0.25% base cashback on other eligible transactions.",
+      "url": null
+    },
+    {
+      "id": "ocbc-365-card@2026.11#1",
+      "docId": "ocbc-365-card",
+      "title": "OCBC 365 Credit Card: features, fees and eligibility",
+      "version": "2026.11",
+      "effectiveDate": "2026-11-01",
+      "authority": "official",
+      "category": "card-types-benefits",
+      "excerpt": "- 6% cashback on dining (including fast food), groceries, land transport and petrol, in Singapore and overseas.\n- 3% cashback at Watsons until 31 March 2027; 0.25% from 1 April 2027.\n- Up to 1% cashback on eligible advertising platform spend (1% with full payment, 0.5% with instalments).\n- 0.25% base cashback on other eligible transactions.",
+      "url": "https://www.ocbc.com/personal-banking/cards/365card.html"
+    },
+    {
+      "id": "365-cashback-tncs@2026.11#2",
+      "docId": "365-cashback-tncs",
+      "title": "Terms and conditions governing OCBC 365 Credit Card Cashback Programme",
+      "version": "2026.11",
+      "effectiveDate": "2026-11-01",
+      "authority": "official",
+      "category": "rewards-cashback",
+      "excerpt": "- 2A(a): 6% cashback on \"Dining\", \"Groceries\", \"Land Transport\" and \"Petrol\", subject to the Minimum Spend Requirement.\n- 2A(b): 3% cashback on \"Watsons\" (valid till 31 March 2027), subject to the Minimum Spend Requirement.\n- 2B: 0.25% cashback on all card transactions if the Minimum Spend Requirement is not met, and on transactions outside Clause 2A if it is met.\n- 2C: 1% cashback on \"Advertising Platform\" with full payment.\n- 2D: 0.5% cashback on \"Advertising Platform\" with payment in instalments.",
+      "url": "https://www.ocbc.com/iwov-resources/sg/ocbc/personal/pdf/cards/tncs-governing-365-cc-cashback-programme-wef1nov26.pdf"
+    }
+  ],
+  "relevance": {
+    "answersQuestion": true,
+    "reason": "The draft directly addresses the monthly cashback cap on the OCBC 365 card."
+  },
+  "meta": {
+    "answerModel": "amazon.nova-lite-v1:0",
+    "checkerModel": "amazon.nova-pro-v1:0",
+    "indexCreatedAt": "2026-11-04T13:45:41+00:00",
+    "retrieval": [
+      {
+        "id": "365-cashback-staff-quick-reference@2026.10#2",
+        "score": 0.902
+      },
+      {
+        "id": "ocbc-365-card@2026.11#2",
+        "score": 0.804
+      },
+      {
+        "id": "ocbc-365-card@2024.01#2",
+        "score": 0.775
+      },
+      {
+        "id": "ocbc-365-card@2024.01#1",
+        "score": 0.767
+      },
+      {
+        "id": "ocbc-365-card@2026.11#1",
+        "score": 0.761
+      },
+      {
+        "id": "365-cashback-tncs@2026.11#2",
+        "score": 0.747
+      }
+    ],
+    "latencyMs": 2418
+  }
+}

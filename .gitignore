@@ -22,7 +22,9 @@ venv/
 # Local data and build output
 *.sqlite
 *.sqlite3
+*.sqlite-*
 *.db
+*.db-*
 chroma_db/
 index.json
 ai/package/
