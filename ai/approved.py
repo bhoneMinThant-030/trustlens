@@ -1,43 +1,63 @@
 """
 Approved answers: wording a reviewer has approved, reused word for word when a
-new question asks the same thing. An approved answer skips Model A and Model B.
+new question asks the same thing. An approved answer skips Model A and Model B,
+because a human has already checked it.
 
-Where approved answers are stored is not decided yet (MongoDB Atlas is
-proposed). Until then this is OFF, unless APPROVED_ANSWERS_FILE points to a
-JSON file in the format of data/approved_answers/approved_answers.example.json.
-That lets the backend test the "approved" response today; the storage can be
-swapped in here later without touching the handler.
+Node keeps approved answers in SQLite (approved_answers) and sends them with
+each request:
+    "approvedAnswers": [{"id", "version", "category", "question", "answer"}]
+The Lambda never reads a database. No list, or an empty one, means no matching.
 
-Matching: the question's embedding is compared with the embedding of every
-sample question. The best match wins if its score is at least
-APPROVED_MATCH_MIN (default 0.85).
+Matching: the new question's embedding is compared with the embedding of each
+approved question. The best match is used if its score is at least
+APPROVED_MATCH_MIN (default 0.85). Each approved question is embedded once per
+running Lambda and remembered.
 """
-import json
 import os
 
 from retrieve import dot
 
-_vectors = {}  # (id, version, sample question) -> embedding, cached per container
+MAX_ITEMS = 200
+MAX_QUESTION_CHARS = 2000
+
+_vectors = {}  # (id, version, question) -> embedding, cached per running Lambda
 
 
-def find_match(question_vector, embed):
-    """Return (score, approved_answer) for the best match, or None."""
-    path = os.getenv("APPROVED_ANSWERS_FILE")
-    if not path:
-        return None
-    with open(path, encoding="utf-8") as f:
-        items = json.load(f)
+def clean(items):
+    """Keep only well-formed items from the request. Broken ones are skipped."""
+    if not isinstance(items, list):
+        return []
+    out = []
+    for item in items[:MAX_ITEMS]:
+        if not isinstance(item, dict):
+            continue
+        fields = [item.get("id"), item.get("question"), item.get("answer")]
+        if not all(isinstance(f, str) and f.strip() for f in fields):
+            continue
+        out.append({
+            "id": item["id"].strip(),
+            "version": str(item.get("version") or ""),
+            "category": item.get("category"),
+            "question": item["question"].strip()[:MAX_QUESTION_CHARS],
+            "answer": item["answer"].strip(),
+        })
+    return out
 
+
+def find_match(question_vector, items, embed):
+    """Compare the question with every approved question.
+
+    Returns (best_score, item). item is None when the best score is below the
+    threshold. best_score is None when there are no items."""
+    if not items:
+        return None, None
     min_score = float(os.getenv("APPROVED_MATCH_MIN", "0.85"))
-    best = None
+    best_score, best_item = None, None
     for item in items:
-        for sample in item.get("sampleQuestions", []):
-            key = (item["id"], str(item.get("version", "")), sample)
-            if key not in _vectors:
-                _vectors[key] = embed(sample)
-            score = dot(question_vector, _vectors[key])
-            if best is None or score > best[0]:
-                best = (score, item)
-    if best and best[0] >= min_score:
-        return best
-    return None
+        key = (item["id"], item["version"], item["question"])
+        if key not in _vectors:
+            _vectors[key] = embed(item["question"])
+        score = dot(question_vector, _vectors[key])
+        if best_score is None or score > best_score:
+            best_score, best_item = score, item
+    return best_score, (best_item if best_score >= min_score else None)
