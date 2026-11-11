@@ -12,7 +12,8 @@ const db = new Database(DB_PATH);
 db.pragma("foreign_keys = ON");
 db.pragma("journal_mode = WAL");
 
-// The 7 official OCBC Credit Card categories per docs/api-contract.md
+// The 7 official OCBC Credit Card categories per docs/api-contract.md, plus
+// "uncategorised", which the AI returns when no source matches the question
 const CATEGORIES = [
   "applying-eligibility",
   "card-types-benefits",
@@ -20,7 +21,8 @@ const CATEGORIES = [
   "rewards-cashback",
   "payments-billing",
   "instalments-balance-transfer",
-  "lost-stolen-fraud"
+  "lost-stolen-fraud",
+  "uncategorised"
 ];
 
 /**

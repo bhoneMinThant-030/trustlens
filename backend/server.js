@@ -269,10 +269,25 @@ app.get("/api/dashboard/categories", (req, res) => {
 
 /**
  * POST /api/admin/reset
- * Resets database to clean initial seed data
+ * Resets database to clean initial seed data. Wipes everything, so it is
+ * admin-only and needs the explicit confirmation header X-Confirm-Reset: yes
+ * (stops an accidental click during a live demo).
  */
 app.post("/api/admin/reset", (req, res) => {
   try {
+    if (getDemoUser(req).role !== "admin") {
+      return res.status(403).json({
+        error: { code: "FORBIDDEN", message: "Only admins can reset the database." }
+      });
+    }
+    if (req.headers["x-confirm-reset"] !== "yes") {
+      return res.status(400).json({
+        error: {
+          code: "CONFIRMATION_REQUIRED",
+          message: "Send header X-Confirm-Reset: yes to confirm wiping all data."
+        }
+      });
+    }
     resetSeedData();
     res.json({ message: "Database reset to initial seed state." });
   } catch (err) {
