@@ -1,18 +1,68 @@
+// useEffect runs code when the page first loads.
+import { useEffect, useState } from 'react'
 
-import { useState } from 'react'
-import { mockEmails } from '../../data/mockEmails'
+// Get the officer's emails from the backend API.
+import { getOfficerEmails, getEmailAnswer } from '../../api/officer'
 import './OfficerWorkspace.css'
 import { mockResults } from '../../data/mockResults'
 
 function OfficerWorkspace() {
-  const [selectedEmail, setSelectedEmail] = useState(mockEmails[0])
+  // Store emails received from the backend.
+const [emails, setEmails] = useState([])
+
+// No email is selected until the backend finishes loading.
+const [selectedEmail, setSelectedEmail] = useState(null)
+
+// Show whether the inbox is loading.
+const [loadingEmails, setLoadingEmails] = useState(true)
+
+// Store any error while loading emails.
+const [emailError, setEmailError] = useState('')
+
+// Store the AI answer returned by the backend.
+const [apiAnswer, setApiAnswer] = useState(null)
+
+// Show a loading message while retrieving an existing answer.
+const [loadingAnswer, setLoadingAnswer] = useState(false)
+
+// Store errors when retrieving an AI answer.
+const [answerError, setAnswerError] = useState('')
+
+// Load the officer's emails when the page opens.
+useEffect(() => {
+    async function loadEmails() {
+        try {
+            // Call our officer.js API function.
+            const data = await getOfficerEmails()
+
+            // Save the emails returned by the backend.
+            setEmails(data.emails)
+
+            // Automatically select the first email.
+            if (data.emails.length > 0) {
+                setSelectedEmail(data.emails[0])
+            }
+        } catch (error) {
+            // Show an error if the backend cannot be reached.
+            setEmailError(error.message)
+        } finally {
+            // Stop displaying the loading message.
+            setLoadingEmails(false)
+        }
+    }
+
+    loadEmails()
+}, [])
+
   const [showResult, setShowResult] = useState(false)
   const [reviewRequested, setReviewRequested] = useState(false) // Store whether the officer has requested human review.
   const [reviewCompleted, setReviewCompleted] = useState(false)// Remember whether the demo reviewer has returned an answer.
-  // Find the AI result that belongs to the selected email.
-    const selectedResult = mockResults.find(
-        (result) => result.id === selectedEmail.id
-    )
+    // Find the matching mock result only when an email is selected.
+    // ?. prevents an error while the backend emails are loading.
+    // This mock-result lookup is temporary until we connect the answer API.
+    const selectedResult = selectedEmail
+        ? mockResults.find((result) => result.id === selectedEmail.emailId)
+        : null
     
   // Checking whether any claim contradicts the approved evidence.
   const hasContradiction = selectedResult?.claims?.some(
@@ -40,10 +90,18 @@ function OfficerWorkspace() {
         <section className="officer-inbox">
           <h2>Customer Inbox</h2>
 
-          {mockEmails.map((email) => (
+        {loadingEmails && <p>Loading customer emails...</p>}
+
+        {emailError && <p role="alert">{emailError}</p>}
+
+        {!loadingEmails && !emailError && emails.length === 0 && (
+            <p>No customer emails found.</p>
+        )}
+
+        {emails.map((email) => (
             <button
               key={email.id}
-              className={`officer-email-item ${selectedEmail.id === email.id ? 'selected' : ''}`}
+              className={`officer-email-item ${selectedEmail?.emailId === email.emailId ? 'selected' : ''}`}
                 onClick={() => {
                     // Change the currently selected email.
                     setSelectedEmail(email)
@@ -58,9 +116,9 @@ function OfficerWorkspace() {
                     setReviewCompleted(false)
                 }}
             >
-              <strong>{email.sender}</strong>
-              <span>{email.subject}</span>
-              <small>{email.date}</small>
+            <strong>{email.customerName}</strong>
+            <span>{email.cardType}</span>
+            <small>{new Date(email.createdAt).toLocaleString('en-SG')}</small>
             </button>
           ))}
         </section>
@@ -68,14 +126,20 @@ function OfficerWorkspace() {
         <section className="officer-details">
           <h2>Email Details</h2>
 
-          <p><strong>From:</strong> {selectedEmail.sender}</p>
-          <p><strong>Subject:</strong> {selectedEmail.subject}</p>
-          <p><strong>Category:</strong> {selectedEmail.category}</p>
-          <p><strong>Date:</strong> {selectedEmail.date}</p>
+            {selectedEmail ? (
+                <>
+                    <p><strong>From:</strong> {selectedEmail.customerName} ({selectedEmail.customerEmail})</p>
+                    <p><strong>Card:</strong> {selectedEmail.cardType}</p>
+                    <p><strong>Category:</strong> {selectedEmail.category}</p>
+                    <p><strong>Date:</strong> {new Date(selectedEmail.createdAt).toLocaleString('en-SG')}</p>
+                </>
+            ) : (
+                <p>Select an email to view its details.</p>
+            )}
 
           <div className="officer-message">
             <h3>Customer Message</h3>
-            <p>{selectedEmail.message}</p>
+            <p>{selectedEmail?.question ?? 'No email selected.'}</p>
           </div>
             <button
                 className="trustlens-check-button"
