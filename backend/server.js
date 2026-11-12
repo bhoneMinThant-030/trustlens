@@ -17,7 +17,8 @@ const {
   getAnswerById,
   getAnswerByEmailId,
   getAllEmails,
-  getCategoryMetrics
+  getCategoryMetrics,
+  getFlaggedDocuments
 } = require("./db");
 
 const app = express();
@@ -268,6 +269,20 @@ app.get("/api/dashboard/categories", (req, res) => {
 });
 
 /**
+ * GET /api/flagged-documents
+ * Unofficial or outdated documents that appeared in answers a reviewer corrected
+ */
+app.get("/api/flagged-documents", (req, res) => {
+  try {
+    res.json(getFlaggedDocuments());
+  } catch (err) {
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: err.message }
+    });
+  }
+});
+
+/**
  * POST /api/admin/reset
  * Resets database to clean initial seed data. Wipes everything, so it is
  * admin-only and needs the explicit confirmation header X-Confirm-Reset: yes
@@ -337,6 +352,7 @@ app.get("/", (req, res) => {
               <li><code>POST /api/reviews/:reviewId/decision</code> - Approve or correct flagged answer</li>
               <li><code>GET /api/stats</code> - Admin category pending counts</li>
               <li><code>GET /api/dashboard/categories</code> - Comprehensive 7-category breakdown</li>
+              <li><code>GET /api/flagged-documents</code> - Documents behind corrected answers</li>
               <li><code>GET /api/health</code> - Server health check</li>
             </ul>
           </div>
