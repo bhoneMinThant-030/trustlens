@@ -1011,18 +1011,20 @@ function submitReviewDecision(reviewId, { decision, correctedAnswer, reason, rev
           decision = ?,
           reviewer = ?,
           note = ?,
-          corrected_answer = ?,
+          -- approving a re-escalated answer keeps the earlier correction
+          corrected_answer = COALESCE(?, corrected_answer),
           decided_at = ?
       WHERE id = ?
     `).run(normalizedDecision, normalizedDecision, finalReviewer, finalNote, finalCorrected, now, reviewId);
 
+    // Keep the AI's draft in answers.answer. The reviewer's text lives in
+    // reviews.corrected_answer, and getAnswerById shows it to the officer.
     db.prepare(`
       UPDATE answers
       SET status = ?,
-          answer = COALESCE(?, answer),
           updated_at = ?
       WHERE id = ?
-    `).run(newAnswerStatus, finalCorrected, now, review.answer_id);
+    `).run(newAnswerStatus, now, review.answer_id);
 
     db.prepare(`
       INSERT INTO system_audit_logs (action, details, timestamp)
@@ -1036,6 +1038,107 @@ function submitReviewDecision(reviewId, { decision, correctedAnswer, reason, rev
 
   transaction();
   return getReviewById(reviewId);
+}
+
+/**
+ * Flagged documents for the admin tab (design update, 12 Nov).
+ * Rule: take every review decided as "corrected", read that answer's sources,
+ * and flag each source that is unofficial or outdated, cited or only "also
+ * found". Claim labels are not used: a contradicted claim usually cites the
+ * official document that proves the answer wrong. Group by docId + version,
+ * count corrections, sort by most corrections, then most recent.
+ */
+function getFlaggedDocuments() {
+  const rows = db.prepare(`
+    SELECT
+      r.id AS review_id,
+      r.reviewer,
+      r.corrected_answer,
+      r.decided_at,
+      a.answer AS ai_answer,
+      a.sources,
+      q.question
+    FROM reviews r
+    JOIN answers a ON r.answer_id = a.id
+    JOIN questions q ON a.question_id = q.id
+    WHERE r.decision = 'corrected' OR r.status = 'corrected'
+  `).all();
+
+  const isOutdated = (src) => src.outdated === true || src.outdated === 1;
+  const isFlagged = (src) => src.authority === "unofficial" || isOutdated(src);
+  const groups = new Map();
+
+  rows.forEach((row) => {
+    let sources = [];
+    try {
+      sources = JSON.parse(row.sources || "[]");
+    } catch (e) {
+      sources = [];
+    }
+    if (!Array.isArray(sources)) return;
+
+    const officialSources = sources
+      .filter((src) => src && src.authority === "official" && !isOutdated(src))
+      .map((src) => ({
+        id: src.id,
+        title: src.title,
+        version: src.version,
+        excerpt: src.excerpt
+      }));
+
+    const evidence = {
+      reviewId: row.review_id,
+      question: row.question,
+      aiAnswer: row.ai_answer,
+      correctedAnswer: row.corrected_answer,
+      reviewer: row.reviewer,
+      decidedAt: row.decided_at,
+      officialSources
+    };
+
+    // Several passages of one document can appear in one answer: count the review once
+    const seenInThisAnswer = new Set();
+
+    sources.filter((src) => src && src.docId && isFlagged(src)).forEach((src) => {
+      const key = `${src.docId}@${src.version}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          docId: src.docId,
+          version: src.version,
+          title: src.title,
+          category: src.category,
+          reason: src.authority === "unofficial" ? "unofficial" : "outdated",
+          newerVersion: src.newerVersion || null,
+          corrections: 0,
+          lastFlaggedAt: null,
+          excerpt: src.excerpt,
+          evidence: []
+        });
+      }
+      if (seenInThisAnswer.has(key)) return;
+      seenInThisAnswer.add(key);
+
+      const group = groups.get(key);
+      group.corrections += 1;
+      group.evidence.push(evidence);
+      if (!group.lastFlaggedAt || (row.decided_at && row.decided_at > group.lastFlaggedAt)) {
+        group.lastFlaggedAt = row.decided_at;
+        group.excerpt = src.excerpt;
+      }
+    });
+  });
+
+  const flaggedDocuments = [...groups.values()];
+  flaggedDocuments.forEach((doc) => {
+    doc.evidence.sort((x, y) => String(y.decidedAt).localeCompare(String(x.decidedAt)));
+  });
+  flaggedDocuments.sort(
+    (x, y) =>
+      y.corrections - x.corrections ||
+      String(y.lastFlaggedAt).localeCompare(String(x.lastFlaggedAt))
+  );
+
+  return { flaggedDocuments };
 }
 
 /**
@@ -1107,12 +1210,73 @@ function getStats() {
     ORDER BY count DESC
   `).all();
 
+  // One row per question category (same column as pendingByCategory and the
+  // review queue). Seeded and live answers both count.
+  // A flagged answer can have several failure types, so the failure
+  // columns can add up to more than sentToReview.
+  const rows = db.prepare(`
+    SELECT
+      q.category AS category,
+      COUNT(a.id) AS answered,
+      SUM(CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END) AS sentToReview,
+      SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) AS pending,
+      SUM(CASE WHEN r.id IS NOT NULL AND r.status <> 'pending' THEN 1 ELSE 0 END) AS resolved,
+      SUM(CASE WHEN r.id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM claims c WHERE c.answer_id = a.id AND LOWER(c.status) = 'contradicted'
+      ) THEN 1 ELSE 0 END) AS contradicted,
+      SUM(CASE WHEN r.id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM claims c WHERE c.answer_id = a.id AND LOWER(c.status) = 'insufficient_evidence'
+      ) THEN 1 ELSE 0 END) AS insufficientEvidence,
+      SUM(CASE WHEN r.id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM claims c WHERE c.answer_id = a.id AND c.outdated = 1
+      ) THEN 1 ELSE 0 END) AS outdated,
+      SUM(CASE WHEN r.id IS NOT NULL AND a.safety_text_altered = 1 THEN 1 ELSE 0 END) AS safety,
+      SUM(CASE WHEN r.trigger = 'manual' THEN 1 ELSE 0 END) AS manual
+    FROM answers a
+    JOIN questions q ON a.question_id = q.id
+    LEFT JOIN reviews r ON r.answer_id = a.id
+    GROUP BY q.category
+  `).all();
+
+  const empty = () => ({
+    answered: 0,
+    sentToReview: 0,
+    pending: 0,
+    resolved: 0,
+    failures: { contradicted: 0, insufficientEvidence: 0, outdated: 0, safety: 0, manual: 0 }
+  });
+  const byKey = new Map(CATEGORIES.map((cat) => [cat, empty()]));
+
+  rows.forEach((r) => {
+    // Anything outside the agreed list is counted as uncategorised
+    const key = byKey.has(r.category) ? r.category : "uncategorised";
+    const t = byKey.get(key);
+    t.answered += r.answered || 0;
+    t.sentToReview += r.sentToReview || 0;
+    t.pending += r.pending || 0;
+    t.resolved += r.resolved || 0;
+    Object.keys(t.failures).forEach((f) => {
+      t.failures[f] += r[f] || 0;
+    });
+  });
+
+  const byCategory = CATEGORIES.map((category) => {
+    const { resolved, ...row } = byKey.get(category);
+    return { category, ...row };
+  });
+
+  const sum = (field) => [...byKey.values()].reduce((total, row) => total + row[field], 0);
+
   return {
     pendingTotal,
     pendingByCategory: categoryRows.map((r) => ({
       category: r.category,
       count: r.count
-    }))
+    })),
+    answeredTotal: sum("answered"),
+    reviewedTotal: sum("sentToReview"),
+    resolvedTotal: sum("resolved"),
+    byCategory
   };
 }
 
@@ -1335,5 +1499,6 @@ module.exports = {
   getAnswerByEmailId,
   getAllEmails,
   getCategoryMetrics,
+  getFlaggedDocuments,
   CATEGORIES
 };

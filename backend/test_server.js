@@ -4,6 +4,7 @@
  */
 const { app } = require("./server");
 const { resetSeedData, db } = require("./db");
+const { saveAskResult } = require("./services/saveAskResult");
 
 function mockRequest(app, method, url, body = null, headers = {}) {
   return new Promise((resolve) => {
@@ -284,6 +285,157 @@ async function runTests() {
       !approvedRows.some((r) => r.category === "rewards-cashback"),
     "Approved answers seed: only aa_late_fee, no 365 cashback answer",
     JSON.stringify(approvedRows)
+  );
+
+  // Test 15: Correcting a review keeps the AI draft; the officer sees the correction
+  resetSeedData();
+  const answerIdOf = (rid) => db.prepare("SELECT answer_id FROM reviews WHERE id = ?").get(rid).answer_id;
+  const draft = db.prepare("SELECT answer FROM answers WHERE id = ?").get(answerIdOf("r_042")).answer;
+  await mockRequest(app, "POST", "/api/reviews/r_042/decision", {
+    decision: "corrected",
+    correctedAnswer: "Corrected by reviewer."
+  }, { "x-user-id": "reviewer-1", "x-role": "reviewer" });
+  const stored = db.prepare("SELECT answer, status FROM answers WHERE id = ?").get(answerIdOf("r_042"));
+  const officerView = await mockRequest(app, "GET", "/api/officer/emails/em_002/answer", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  });
+  assert(
+    stored.answer === draft &&
+      stored.status === "reviewed_corrected" &&
+      officerView.body.answer === "Corrected by reviewer.",
+    "Correct keeps the AI draft in answers and shows the correction to the officer",
+    JSON.stringify({ stored, officerAnswer: officerView.body.answer })
+  );
+
+  // Test 15b: Re-escalating a corrected answer and approving it keeps the correction
+  await mockRequest(app, "POST", `/api/answers/${answerIdOf("r_042")}/review`, { note: "check again" }, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  });
+  await mockRequest(app, "POST", "/api/reviews/r_042/decision", { decision: "approved" }, {
+    "x-user-id": "reviewer-1",
+    "x-role": "reviewer"
+  });
+  const afterReapprove = await mockRequest(app, "GET", "/api/officer/emails/em_002/answer", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  });
+  assert(
+    afterReapprove.body.answer === "Corrected by reviewer.",
+    "Approving a re-escalated corrected answer keeps the reviewer's correction",
+    JSON.stringify({ officerAnswer: afterReapprove.body.answer })
+  );
+
+  // Test 16: /api/stats has the dashboard totals and 8 byCategory rows
+  const t16 = await mockRequest(app, "GET", "/api/stats", null, { "x-user-id": "admin-1", "x-role": "admin" });
+  const st = t16.body;
+  const failureKeys = JSON.stringify(["contradicted", "insufficientEvidence", "manual", "outdated", "safety"]);
+  assert(
+    t16.status === 200 &&
+      st.answeredTotal === 8 &&
+      st.reviewedTotal === 5 &&
+      st.resolvedTotal === 1 &&
+      st.pendingTotal === 4 &&
+      Array.isArray(st.byCategory) &&
+      st.byCategory.length === 8 &&
+      st.byCategory.every((r) =>
+        typeof r.answered === "number" &&
+        typeof r.sentToReview === "number" &&
+        typeof r.pending === "number" &&
+        JSON.stringify(Object.keys(r.failures).sort()) === failureKeys
+      ),
+    "GET /api/stats returns answeredTotal, reviewedTotal, resolvedTotal and byCategory",
+    JSON.stringify(st)
+  );
+
+  // Test 17: Reset clears live answers and reviews, not just the seeded ones
+  saveAskResult({
+    questionId: "q_live_test",
+    answerId: "a_live_test",
+    emailId: "em_013",
+    question: "Can I use my credit card to buy cryptocurrency?",
+    reviewTrigger: "auto_threshold",
+    lambdaResponse: {
+      type: "generated",
+      answer: "Live answer.",
+      category: "uncategorised",
+      confidence: 0.2,
+      claims: [{ text: "claim", label: "insufficient_evidence" }],
+      sources: []
+    }
+  });
+  saveAskResult({
+    questionId: "q_new_test",
+    answerId: "a_new_test",
+    emailId: "em_new_test",
+    question: "A brand new email",
+    reviewTrigger: null,
+    lambdaResponse: { type: "generated", answer: "New.", category: "fees-charges", confidence: 0.9, claims: [], sources: [] }
+  });
+  const t17 = await mockRequest(app, "POST", "/api/admin/reset", null, {
+    "x-user-id": "admin-1",
+    "x-role": "admin",
+    "x-confirm-reset": "yes"
+  });
+  const count = (table) => db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
+  const counts = { questions: count("questions"), answers: count("answers"), reviews: count("reviews") };
+  assert(
+    t17.status === 200 &&
+      counts.questions === 13 &&
+      counts.answers === 8 &&
+      counts.reviews === 5 &&
+      !db.prepare("SELECT 1 FROM answers WHERE id IN ('a_live_test', 'a_new_test')").get() &&
+      !db.prepare("SELECT 1 FROM questions WHERE email_id = 'em_new_test'").get() &&
+      db.prepare("SELECT status FROM reviews WHERE id = 'r_042'").get().status === "pending",
+    "POST /api/admin/reset clears live answers and reviews and restores the seed",
+    JSON.stringify(counts)
+  );
+
+  // Test 18: Flagged documents come from corrected answers' unofficial or outdated sources
+  resetSeedData();
+  const rH = { "x-user-id": "reviewer-1", "x-role": "reviewer" };
+  await mockRequest(app, "POST", "/api/reviews/r_041/decision", {
+    decision: "corrected",
+    correctedAnswer: "Cashback is capped at S$160 per month."
+  }, rH);
+  await mockRequest(app, "POST", "/api/reviews/r_042/decision", { decision: "approved" }, rH);
+  const lambdaSample = JSON.parse(JSON.stringify(require("../docs/samples/lambda-response-contradicted.json")));
+  lambdaSample.sources.forEach((src) => {
+    if (src.version === "2024.01") {
+      src.outdated = true;
+      src.newerVersion = "2026.11";
+    }
+  });
+  const live = saveAskResult({
+    questionId: "q_flag_test",
+    answerId: "a_flag_test",
+    emailId: "em_012",
+    question: "What is the monthly cashback cap on the OCBC 365 card?",
+    reviewTrigger: "auto_contradiction",
+    lambdaResponse: lambdaSample
+  });
+  await mockRequest(app, "POST", `/api/reviews/${live.review.reviewId}/decision`, {
+    decision: "corrected",
+    correctedAnswer: "S$160 per month."
+  }, rH);
+  const t18 = await mockRequest(app, "GET", "/api/flagged-documents", null, { "x-user-id": "admin-1", "x-role": "admin" });
+  const flagged = t18.body.flaggedDocuments || [];
+  const staffNote = flagged[0] || {};
+  const oldPage = flagged.find((f) => f.docId === "ocbc-365-card" && f.version === "2024.01") || {};
+  assert(
+    t18.status === 200 &&
+      flagged.length === 2 &&
+      staffNote.docId === "365-cashback-staff-quick-reference" &&
+      staffNote.reason === "unofficial" &&
+      staffNote.corrections === 2 &&
+      staffNote.evidence.every((e) => e.aiAnswer.includes("S$250") && e.officialSources.length > 0) &&
+      oldPage.reason === "outdated" &&
+      oldPage.newerVersion === "2026.11" &&
+      oldPage.corrections === 1 &&
+      !JSON.stringify(flagged).includes("r_042"),
+    "GET /api/flagged-documents flags unofficial and outdated sources of corrected answers only",
+    JSON.stringify(flagged.map((f) => ({ docId: f.docId, version: f.version, reason: f.reason, corrections: f.corrections })))
   );
 
   console.log("\n-------------------------------------------------");

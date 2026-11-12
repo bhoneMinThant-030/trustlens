@@ -245,18 +245,38 @@ Response: the updated `Review`, with:
 }
 ```
 
+- A correction does not overwrite the AI draft. The draft stays as the review's `answer`; the reviewer's text is `decision.correctedAnswer`, and the officer's answer endpoints return the corrected text
+
 ### `GET /api/stats` (admin)
+
+Totals and per-category counts for the Dashboard. Seeded and live answers both count. There is no time window yet.
 
 ```json
 {
   "pendingTotal": 4,
   "pendingByCategory": [
-    { "category": "fees-charges", "count": 2 },
-    { "category": "lost-stolen-fraud", "count": 1 },
-    { "category": "rewards-cashback", "count": 1 }
+    { "category": "lost-stolen-fraud", "count": 2 },
+    { "category": "rewards-cashback", "count": 1 },
+    { "category": "fees-charges", "count": 1 }
+  ],
+  "answeredTotal": 8,
+  "reviewedTotal": 5,
+  "resolvedTotal": 1,
+  "byCategory": [
+    {
+      "category": "lost-stolen-fraud",
+      "answered": 2,
+      "sentToReview": 2,
+      "pending": 2,
+      "failures": { "contradicted": 2, "insufficientEvidence": 0, "outdated": 1, "safety": 1, "manual": 0 }
+    }
   ]
 }
 ```
+
+- `answeredTotal`: answers generated. `reviewedTotal`: answers sent to review (any status). `resolvedTotal`: reviews approved or corrected
+- `byCategory` always has 8 rows (the 7 categories plus `uncategorised`), in the order of the shared category list (one row shown above). Categories come from the question, the same as `pendingByCategory` and the review queue
+- `failures` count answers sent to review that have: a `contradicted` claim, an `insufficient_evidence` claim, an outdated claim, altered safety text, or a `manual` trigger. One answer can count in several columns
 
 ### `GET /api/officer/emails` (officer)
 
@@ -317,6 +337,49 @@ Metrics for every category, including `uncategorised`. Counts include both seede
 
 - `categories` always has 8 entries (the 7 categories plus `uncategorised`), even when a count is 0
 - `reviewRatePct` = (`pendingReviews` + `reviewedCount`) / `totalQueries`, rounded, `0` when there are no queries
+
+### `GET /api/flagged-documents` (admin)
+
+Every unofficial or outdated document that appeared in an answer a reviewer corrected. Built from stored reviews and answers, no extra table.
+
+Rule: take every review decided `corrected`, read that answer's `sources`, and flag each source with `authority: "unofficial"` or `outdated: true`, whether cited or only also found. Claim labels are not used, because a contradicted claim usually cites the official document that proves it wrong. Group by `docId` + `version`, count corrections, sort by most corrections, then most recent.
+
+```json
+{
+  "flaggedDocuments": [
+    {
+      "docId": "365-cashback-staff-quick-reference",
+      "version": "2026.10",
+      "title": "Staff quick reference: OCBC 365 cashback",
+      "category": "rewards-cashback",
+      "reason": "unofficial",
+      "newerVersion": null,
+      "corrections": 1,
+      "lastFlaggedAt": "2026-11-21T10:42:00+08:00",
+      "excerpt": "The OCBC 365 card has a monthly cashback cap of S$250 ...",
+      "evidence": [
+        {
+          "reviewId": "r_041",
+          "question": "What is the monthly cashback cap on the OCBC 365 card?",
+          "aiAnswer": "The monthly cashback cap is S$250.",
+          "correctedAnswer": "Cashback is capped at S$160 per month.",
+          "reviewer": "reviewer-1",
+          "decidedAt": "2026-11-21T10:42:00+08:00",
+          "officialSources": [
+            { "id": "365-cashback-tncs@2026.11#3", "title": "...", "version": "2026.11", "excerpt": "..." }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+- `reason` is `unofficial` or `outdated` (unofficial wins if both). `newerVersion` comes from the source, `null` when unknown
+- `officialSources` are the official, current sources in the same answer, so the admin can compare
+- `aiAnswer` is the AI's original draft (corrections no longer overwrite it)
+- A document with several passages in one answer counts that correction once. `evidence` is newest first
+- Empty list (`{ "flaggedDocuments": [] }`) until a reviewer corrects an answer
 
 ### `POST /api/admin/reset` (admin)
 
