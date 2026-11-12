@@ -1,10 +1,13 @@
 // useEffect runs code when the page first loads.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-// Get the officer's emails from the backend API.
-import { getOfficerEmails, getEmailAnswer } from '../../api/officer'
+// API functions used by the Officer Workspace.
+import {
+  getOfficerEmails,
+  getEmailAnswer,
+  generateAnswer
+} from '../../api/officer'
 import './OfficerWorkspace.css'
-import { mockResults } from '../../data/mockResults'
 
 function OfficerWorkspace() {
   // Store emails received from the backend.
@@ -28,6 +31,15 @@ const [loadingAnswer, setLoadingAnswer] = useState(false)
 // Store errors when retrieving an AI answer.
 const [answerError, setAnswerError] = useState('')
 
+// True while the backend is generating and verifying an AI answer.
+const [generatingAnswer, setGeneratingAnswer] = useState(false)
+
+// Stores errors that happen during AI generation.
+const [generationError, setGenerationError] = useState('')
+
+// Remember the currently selected email, even during an API request.
+const selectedEmailIdRef = useRef(null)
+
 // Load the officer's emails when the page opens.
 useEffect(() => {
     async function loadEmails() {
@@ -40,6 +52,7 @@ useEffect(() => {
 
             // Automatically select the first email.
             if (data.emails.length > 0) {
+                selectedEmailIdRef.current = data.emails[0].emailId
                 setSelectedEmail(data.emails[0])
             }
         } catch (error) {
@@ -54,26 +67,160 @@ useEffect(() => {
     loadEmails()
 }, [])
 
+    // Load an existing AI answer whenever the selected email changes.
+    useEffect(() => {
+
+        
+        // Generate an AI answer when the officer clicks the button.
+        async function handleGenerateAnswer() {
+
+            // Stop if no email is selected or a request is already running.
+            if (!selectedEmail || generatingAnswer || loadingAnswer) {
+                return
+            }
+
+            // Remember which email we are generating an answer for.
+            const emailId = selectedEmail.emailId
+            const question = selectedEmail.question
+
+            // If this email already has an answer, display it.
+            if (apiAnswer?.emailId === emailId) {
+                setShowResult(true)
+                return
+            }
+
+            // Start loading and clear previous errors.
+            setGeneratingAnswer(true)
+            setGenerationError('')
+            setShowResult(false)
+
+            try {
+                // Request an AI answer from the backend.
+                const result = await generateAnswer(emailId, question)
+
+                // Only show the result if the officer is still viewing this email.
+                if (
+                    result.emailId === emailId &&
+                    selectedEmailIdRef.current === emailId
+                ) {
+                    setApiAnswer(result)
+                    setShowResult(true)
+                }
+
+            } catch (error) {
+                if (selectedEmailIdRef.current === emailId) {
+                    setGenerationError(
+                        error.code === 'LAMBDA_FAILED'
+                            ? 'The AI verification service is temporarily unavailable. Please try again.'
+                            : error.message
+                    )
+                }
+            } finally {
+                setGeneratingAnswer(false)
+            }
+        }
+
+
+
+        // Do nothing if no email has been selected yet.
+        if (!selectedEmail) {
+            return
+        }
+
+        // Prevent an older request from updating the wrong email.
+        let cancelled = false
+
+        async function loadExistingAnswer() {
+
+            // Clear the previous email's answer.
+            setApiAnswer(null)
+            setAnswerError('')
+            setLoadingAnswer(true)
+
+            try {
+                // Ask the backend whether this email already has an AI answer.
+                const data = await getEmailAnswer(selectedEmail.emailId)
+
+                // Save the answer only if this email is still selected.
+                if (!cancelled) {
+                    // Display the backend response in the browser console.
+                    console.log('Existing AI answer:', data)
+
+                    // Store the answer in React.
+                    setApiAnswer(data)
+                }
+
+            } catch (error) {
+
+                if (!cancelled) {
+
+                    // A 404 means this email has no AI answer yet.
+                    // This is normal for unanswered customer emails.
+                    if (error.status === 404) {
+                        setApiAnswer(null)
+                    } else {
+                        // Show unexpected errors, such as backend connection problems.
+                        setAnswerError(error.message)
+                    }
+                }
+
+            } finally {
+
+                if (!cancelled) {
+                    setLoadingAnswer(false)
+                }
+            }
+        }
+
+        loadExistingAnswer()
+
+        // Ignore outdated responses if the officer selects another email.
+        return () => {
+            cancelled = true
+        }
+
+    }, [selectedEmail])
+
+
   const [showResult, setShowResult] = useState(false)
   const [reviewRequested, setReviewRequested] = useState(false) // Store whether the officer has requested human review.
   const [reviewCompleted, setReviewCompleted] = useState(false)// Remember whether the demo reviewer has returned an answer.
-    // Find the matching mock result only when an email is selected.
-    // ?. prevents an error while the backend emails are loading.
-    // This mock-result lookup is temporary until we connect the answer API.
-    const selectedResult = selectedEmail
-        ? mockResults.find((result) => result.id === selectedEmail.emailId)
-        : null
-    
-  // Checking whether any claim contradicts the approved evidence.
-  const hasContradiction = selectedResult?.claims?.some(
-    (claim) => claim.status === 'Contradicted'
-  ) ?? false
+    // Use the real AI answer received from the backend.
+    // Only display an AI answer if it belongs to the selected email.
+    // This prevents showing another customer's answer.
+    const selectedResult =
+        apiAnswer?.emailId === selectedEmail?.emailId
+            ? apiAnswer
+            : null
 
-  // Human review is needed if the score is below 70%
-  // or if at least one claim is contradicted.
-  const needsReview = selectedResult
-    ? selectedResult.confidence < 70 || hasContradiction
-    : false
+    
+  
+    // Convert the backend confidence (0 to 1) into a percentage (0 to 100).
+    // Example: 0.85 becomes 85.
+    const confidencePercent = selectedResult
+        ? Math.round(selectedResult.confidence * 100)
+        : 0
+
+    // Check whether any AI claim contradicts the evidence.
+    // Backend labels use lowercase words such as "contradicted".
+    const hasContradiction = selectedResult?.claims?.some(
+        (claim) => claim.label === 'contradicted'
+    ) ?? false
+
+    // Check whether the backend has already requested human review.
+    const hasPendingReview = selectedResult?.review?.status === 'pending'
+
+    // An answer needs review if:
+    // 1. The backend has marked it for review,
+    // 2. Its confidence is below 70%, or
+    // 3. At least one claim is contradicted.
+    const needsReview = selectedResult
+        ? hasPendingReview ||
+        confidencePercent < 70 ||
+        hasContradiction ||
+        selectedResult.status === 'pending_review'
+        : false
+
 
 
 
@@ -103,6 +250,9 @@ useEffect(() => {
               key={email.id}
               className={`officer-email-item ${selectedEmail?.emailId === email.emailId ? 'selected' : ''}`}
                 onClick={() => {
+                    // Immediately remember which email the officer selected.
+                    selectedEmailIdRef.current = email.emailId
+
                     // Change the currently selected email.
                     setSelectedEmail(email)
 
@@ -141,12 +291,54 @@ useEffect(() => {
             <h3>Customer Message</h3>
             <p>{selectedEmail?.question ?? 'No email selected.'}</p>
           </div>
+            
+            
+            {/* Check an existing answer or generate a new one. */}
             <button
                 className="trustlens-check-button"
-                onClick={() => setShowResult(true)}
+
+                // Prevent clicks when no email is selected,
+                // while loading, or while generating an answer.
+                disabled={
+                    !selectedEmail ||
+                    loadingAnswer ||
+                    generatingAnswer
+                }
+
+                onClick={() => {
+                    // If an answer already exists, display it.
+                    if (selectedResult) {
+                        setShowResult(true)
+                    } else {
+                        // Otherwise, generate a new answer through the backend.
+                        handleGenerateAnswer()
+                    }
+                }}
             >
-                Check with TrustLens
+                {generatingAnswer
+                    ? 'Generating AI Answer...'
+                    : loadingAnswer
+                        ? 'Loading AI Answer...'
+                        : selectedResult
+                            ? 'View TrustLens Result'
+                            : 'Generate with TrustLens'}
             </button>
+
+                  {/* Show an error if AI generation fails. */}
+                  {generationError && (
+                      <p role="alert" className="evidence-warning">
+                          {generationError}
+                      </p>
+                  )}
+
+
+                {/* Show an error if the backend request failed. */}
+                {answerError && (
+                    <p role="alert" className="evidence-warning">
+                        Unable to load AI answer: {answerError}
+                    </p>
+                )}
+                
 
             {/* End of the Email Details section. */}
             </section>
@@ -195,24 +387,27 @@ useEffect(() => {
                     {/* Changes the confidence box colour based on the AI result and 
                     displays the confidence score for the selected email */}
                     <div
-                        className={`confidence-section ${selectedResult.confidence >= 70 &&
-                                selectedResult.status === "Supported"
-                                ? "confidence-high"
-                                : selectedResult.confidence >= 50
-                                    ? "confidence-medium"
-                                    : "confidence-low"
+                        className={`confidence-section ${confidencePercent >= 70 && !needsReview
+                                ? 'confidence-high'
+                                : confidencePercent >= 50
+                                    ? 'confidence-medium'
+                                    : 'confidence-low'
                             }`}
                     >
                         {/* Show the confidence score. */}
                         <h4>Confidence Score</h4>
 
                         <p className="confidence-score">
-                            {selectedResult.confidence}%
+                            {confidencePercent}%
                         </p>
 
                         {/* Show whether the answer needs review. */}
                         <p className="confidence-status">
-                            {selectedResult.status}
+                            {selectedResult.status === 'pending_review'
+                                ? 'Under Review'
+                                : selectedResult.status === 'approved'
+                                    ? 'Checked'
+                                    : selectedResult.status ?? 'Unknown'}
                         </p>
                     </div>
 
@@ -224,82 +419,150 @@ useEffect(() => {
                         <p>{selectedResult.answer}</p>
                     </div>
 
-                    {/* This displays each verification message as a separate line. */}
+                    
+                    {/* Display the verification reasons returned by the backend. */}
                     <div className="verification-section">
                         <h4>Verification Result</h4>
 
-                        {selectedResult.verification.map((message, index) => (
-                            <p key={index}>
-                                {message}
+                        {/* Show a message if the backend returned no claims. */}
+                        {(!selectedResult.claims || selectedResult.claims.length === 0) && (
+                            <p>No claim verification details available.</p>
+                        )}
+
+                        {/* Display the reason for each verified claim. */}
+                        {selectedResult.claims?.map((claim, index) => (
+                            <p key={claim.id ?? index}>
+
+                                {/* Display the claim number and verification label. */}
+                                <strong>
+                                    Claim {index + 1} ({claim.label ?? 'unknown'}):
+                                </strong>{' '}
+
+                                {/* Explain why the claim was supported or contradicted. */}
+                                {claim.reason || 'No explanation provided.'}
+
                             </p>
                         ))}
                     </div>
+
                     
-                    {/* Show each claim checked by TrustLens. */}
-                    <div className="claims-section">
-                        <h4>Claim-by-Claim Verification</h4>
+                    
+                        {/* Display the AI claims and their supporting evidence. */}
+                        <div className="claims-section">
+                            <h4>Claim-by-Claim Verification</h4>
 
-                        {/* Loop through all claims in the selected result. */}
-                        {selectedResult.claims.map((claim) => (
+                            {/* Loop through the claims returned by the backend. */}
+                            {selectedResult.claims?.map((claim, index) => {
 
-                            <div className="claim-card" key={claim.id}>
+                                // Find the source document matching this claim's sourceId.
+                                const source = selectedResult.sources?.find(
+                                    (item) => item.id === claim.sourceId
+                                )
 
-                                {/* Show the claim number and its verification status. */}
-                                <div className="claim-header">
-                                    <strong>Claim {claim.id}</strong>
+                                // The backend uses lowercase verification labels.
+                                const claimLabel = claim.label ?? claim.status ?? 'insufficient'
 
-                                    <span
-                                        className={`claim-status ${claim.status === "Supported"
-                                                ? "claim-supported"
-                                                : claim.status === "Contradicted"
-                                                    ? "claim-contradicted"
-                                                    : "claim-insufficient"
-                                            }`}
-                                    >
-                                        {claim.status}
-                                    </span>
-                                </div>
+                                return (
+                                    <div className="claim-card" key={claim.id ?? index}>
 
-                                {/* Display the statement that was checked. */}
-                                <p>{claim.text}</p>
+                                        {/* Claim number and verification status. */}
+                                        <div className="claim-header">
+                                            <strong>Claim {index + 1}</strong>
 
-                                
-                                    {/* Show the evidence used to check this AI claim. */}
-                                    <div className="claim-source">
+                                            <span
+                                                className={`claim-status ${claimLabel === 'supported'
+                                                        ? 'claim-supported'
+                                                        : claimLabel === 'contradicted'
+                                                            ? 'claim-contradicted'
+                                                            : 'claim-insufficient'
+                                                    }`}
+                                            >
+                                                {claimLabel}
+                                            </span>
+                                        </div>
 
-                                        {/* Display the name of the source document. */}
-                                        <strong>Evidence Source:</strong>
+                                        {/* The statement generated by AI. */}
+                                        <p>{claim.text}</p>
 
-                                        <p>
-                                            {claim.source
-                                                ? claim.source
-                                                : "No matching approved source found"}
-                                        </p>
+                                        {/* Evidence source information. */}
+                                        <div className="claim-source">
+                                            <strong>Evidence Source:</strong>
 
-                                        
-                                                {/* Allow the officer to expand or hide the source passage. */}
-                                                {claim.sourcePassage && (
+                                            {source ? (
+                                                <>
+                                                    {/* Display the policy document title. */}
+                                                    <p>{source.title}</p>
 
-                                                    <details className="source-details">
+                                                    {/* Show whether the source is official. */}
+                                                    <p>
+                                                        <strong>Authority:</strong>{' '}
+                                                        {source.authority === 'official'
+                                                            ? 'Official Source'
+                                                            : 'Unofficial Source'}
+                                                    </p>
 
-                                                        {/* Clicking this heading opens or closes the passage. */}
-                                                        <summary>View Source Evidence</summary>
+                                                    {/* Display the source document version. */}
+                                                    <p>
+                                                        <strong>Version:</strong> {source.version}
+                                                    </p>
 
-                                                        {/* Display the exact source passage when expanded. */}
-                                                        <div className="source-passage">
-                                                            <strong>Source Passage:</strong>
-                                                            <p>{claim.sourcePassage}</p>
-                                                        </div>
-                                                    </details>
-                                                )}
+                                                    {/* Link to the actual policy document. */}
+                                                    {source.url ? (
+                                                        <p>
+                                                            <a
+                                                                href={source.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                Open Policy Document ↗
+                                                            </a>
+                                                        </p>
+                                                    ) : (
+                                                        <p>No document link available.</p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <p>No matching evidence source found.</p>
+                                            )}
 
+                                            {/* Warn the officer if the source is outdated. */}
+                                            {claim.outdated && (
+                                                <p className="evidence-warning">
+                                                    ⚠️ This claim references outdated evidence.
+                                                </p>
+                                            )}
 
+                                            {/* Warn the officer if the source is unofficial. */}
+                                            {source?.authority === 'unofficial' && (
+                                                <p className="evidence-warning">
+                                                    ⚠️ Unofficial source — verify before relying on it.
+                                                </p>
+                                            )}
+
+                                            {/* Show the exact evidence quoted by the backend. */}
+                                            {claim.quote && (
+                                                <details className="source-details">
+                                                    <summary>View Exact Evidence</summary>
+
+                                                    <div className="source-passage">
+                                                        <strong>Evidence Passage:</strong>
+                                                        <p>{claim.quote}</p>
+                                                    </div>
+                                                </details>
+                                            )}
+
+                                        </div>
                                     </div>
+                                )
+                            })}
 
+                            {/* Handle answers with no claims. */}
+                            {(!selectedResult.claims ||
+                                selectedResult.claims.length === 0) && (
+                                    <p>No claims available for verification.</p>
+                                )}
+                        </div>
 
-                            </div>
-                        ))}
-                    </div>
                     
                     {/* Allow the officer to request human review. */}
                     <div className="review-action-section">
