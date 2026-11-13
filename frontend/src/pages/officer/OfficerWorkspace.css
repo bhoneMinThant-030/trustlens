@@ -557,3 +557,66 @@
 .reviewed-answer-section p {
   line-height: 1.7;
 }
+
+
+/* Small status badge shown in the customer inbox. */
+.inbox-status {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* No AI answer has been generated. */
+.inbox-not-checked {
+  background-color: #f1f3f5;
+  color: #555;
+}
+
+/* The AI answer is waiting for human review. */
+.inbox-under-review {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+/* The answer has been approved. */
+.inbox-approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* An AI answer exists, but it has another status. */
+.inbox-checked {
+  background-color: #e7f1ff;
+  color: #174ea6;
+}
+
+
+/* Keep the inbox at a manageable height. */
+.officer-inbox {
+  max-height: calc(100vh - 220px);
+  min-height: 300px;
+
+  /* Allow scrolling inside the inbox. */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Keep the scrollbar within the inbox panel. */
+  overscroll-behavior: contain;
+}
+
+/* Make the scrollbar narrower. */
+.officer-inbox::-webkit-scrollbar {
+  width: 7px;
+}
+
+.officer-inbox::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.officer-inbox::-webkit-scrollbar-track {
+  background-color: transparent;
+}

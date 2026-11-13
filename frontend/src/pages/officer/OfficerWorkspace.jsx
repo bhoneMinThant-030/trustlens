@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import {
   getOfficerEmails,
   getEmailAnswer,
-  generateAnswer
+  generateAnswer,
+  requestHumanReview
 } from '../../api/officer'
 import './OfficerWorkspace.css'
 
@@ -37,6 +38,15 @@ const [generatingAnswer, setGeneratingAnswer] = useState(false)
 // Stores errors that happen during AI generation.
 const [generationError, setGenerationError] = useState('')
 
+// True while sending a human review request.
+const [sendingReview, setSendingReview] = useState(false)
+
+// Stores any error from the review API.
+const [reviewError, setReviewError] = useState('')
+
+// Stores review requests successfully submitted in this session.
+const [submittedReviewIds, setSubmittedReviewIds] = useState([])
+
 // Remember the currently selected email, even during an API request.
 const selectedEmailIdRef = useRef(null)
 
@@ -67,59 +77,123 @@ useEffect(() => {
     loadEmails()
 }, [])
 
-    // Load an existing AI answer whenever the selected email changes.
-    useEffect(() => {
 
-        
-        // Generate an AI answer when the officer clicks the button.
-        async function handleGenerateAnswer() {
+        // Send an existing AI answer to the human review queue.
+        async function handleRequestReview() {
 
-            // Stop if no email is selected or a request is already running.
-            if (!selectedEmail || generatingAnswer || loadingAnswer) {
+            // Only request review if an AI answer exists.
+            if (!selectedResult?.answerId || sendingReview || isReviewPending) {
                 return
             }
 
-            // Remember which email we are generating an answer for.
+            // Remember which answer and email the request belongs to.
+            const answerId = selectedResult.answerId
             const emailId = selectedEmail.emailId
-            const question = selectedEmail.question
 
-            // If this email already has an answer, display it.
-            if (apiAnswer?.emailId === emailId) {
-                setShowResult(true)
-                return
-            }
-
-            // Start loading and clear previous errors.
-            setGeneratingAnswer(true)
-            setGenerationError('')
-            setShowResult(false)
+            setSendingReview(true)
+            setReviewError('')
 
             try {
-                // Request an AI answer from the backend.
-                const result = await generateAnswer(emailId, question)
+                // Send the request to the backend review queue.
+                await requestHumanReview(answerId)
 
-                // Only show the result if the officer is still viewing this email.
-                if (
-                    result.emailId === emailId &&
-                    selectedEmailIdRef.current === emailId
-                ) {
-                    setApiAnswer(result)
-                    setShowResult(true)
+                // Remember that this answer has been submitted.
+                setSubmittedReviewIds((previous) =>
+                    previous.includes(answerId)
+                        ? previous
+                        : [...previous, answerId]
+                )
+
+                // Refresh the answer to get the latest review status.
+                // Only update the screen if the same email is still selected.
+                if (selectedEmailIdRef.current === emailId) {
+                    const updatedAnswer = await getEmailAnswer(emailId)
+
+                    if (selectedEmailIdRef.current === emailId) {
+                        setApiAnswer(updatedAnswer)
+                    }
                 }
 
             } catch (error) {
                 if (selectedEmailIdRef.current === emailId) {
-                    setGenerationError(
-                        error.code === 'LAMBDA_FAILED'
-                            ? 'The AI verification service is temporarily unavailable. Please try again.'
-                            : error.message
-                    )
+                    setReviewError(error.message)
                 }
             } finally {
-                setGeneratingAnswer(false)
+                setSendingReview(false)
             }
         }
 
+        // Generate an AI answer when the officer clicks the button.
+        async function handleGenerateAnswer() {
+        // Stop if no email is selected or a request is already running.
+        if (!selectedEmail || generatingAnswer || loadingAnswer) {
+            return
+        }
+
+        // Remember which email we are generating an answer for.
+        const emailId = selectedEmail.emailId
+        const question = selectedEmail.question
+
+        // If this email already has an answer, display it.
+        if (apiAnswer?.emailId === emailId) {
+            setShowResult(true)
+            return
+        }
+
+        // Start loading and clear previous errors.
+        setGeneratingAnswer(true)
+        setGenerationError('')
+        setShowResult(false)
+
+        try {
+            // Request an AI answer from the backend.
+            const result = await generateAnswer(emailId, question)
+
+            // Refresh the inbox so its answerId and status match the backend.
+            // A refresh failure should not hide a successfully generated answer.
+            try {
+                const inbox = await getOfficerEmails()
+
+                setEmails(inbox.emails)
+
+                // Update the selected email only if it is still being viewed.
+                if (selectedEmailIdRef.current === emailId) {
+                    const updatedEmail = inbox.emails.find(
+                        (email) => email.emailId === emailId
+                    )
+
+                    if (updatedEmail) {
+                        setSelectedEmail(updatedEmail)
+                    }
+                }
+            } catch (refreshError) {
+                console.error('Unable to refresh inbox:', refreshError)
+            }
+
+            // Only show the result if the officer is still viewing this email.
+            if (
+                result.emailId === emailId &&
+                selectedEmailIdRef.current === emailId
+            ) {
+                setApiAnswer(result)
+                setShowResult(true)
+            }
+
+        } catch (error) {
+            if (selectedEmailIdRef.current === emailId) {
+                setGenerationError(
+                    error.code === 'LAMBDA_FAILED'
+                        ? 'The AI verification service is temporarily unavailable. Please try again.'
+                        : error.message
+                )
+            }
+        } finally {
+            setGeneratingAnswer(false)
+        }
+    }
+
+    // Load an existing AI answer whenever the selected email changes.
+    useEffect(() => {
 
 
         // Do nothing if no email has been selected yet.
@@ -132,9 +206,17 @@ useEffect(() => {
 
         async function loadExistingAnswer() {
 
-            // Clear the previous email's answer.
+            // Clear the previous email's answer and errors.
             setApiAnswer(null)
             setAnswerError('')
+            setGenerationError('')
+
+            // Unanswered emails have no saved answer to fetch.
+            if (selectedEmail.answerId == null) {
+                setLoadingAnswer(false)
+                return
+            }
+
             setLoadingAnswer(true)
 
             try {
@@ -183,8 +265,6 @@ useEffect(() => {
 
 
   const [showResult, setShowResult] = useState(false)
-  const [reviewRequested, setReviewRequested] = useState(false) // Store whether the officer has requested human review.
-  const [reviewCompleted, setReviewCompleted] = useState(false)// Remember whether the demo reviewer has returned an answer.
     // Use the real AI answer received from the backend.
     // Only display an AI answer if it belongs to the selected email.
     // This prevents showing another customer's answer.
@@ -209,6 +289,24 @@ useEffect(() => {
 
     // Check whether the backend has already requested human review.
     const hasPendingReview = selectedResult?.review?.status === 'pending'
+    // Get the human review information from the backend.
+    const backendReview = selectedResult?.review
+
+    // An answer is pending review if the backend says so,
+    // or if we successfully submitted it during this session.
+    const isReviewPending =
+        backendReview?.status === 'pending' ||
+        selectedResult?.status === 'pending_review' ||
+        (
+            selectedResult?.answerId &&
+            submittedReviewIds.includes(selectedResult.answerId)
+        )
+
+    // Check whether a human reviewer has completed the review.
+    const isReviewCompleted =
+        backendReview?.status === 'approved' ||
+        backendReview?.status === 'rejected' ||
+        backendReview?.status === 'resolved'
 
     // An answer needs review if:
     // 1. The backend has marked it for review,
@@ -247,7 +345,7 @@ useEffect(() => {
 
         {emails.map((email) => (
             <button
-              key={email.id}
+              key={email.emailId}
               className={`officer-email-item ${selectedEmail?.emailId === email.emailId ? 'selected' : ''}`}
                 onClick={() => {
                     // Immediately remember which email the officer selected.
@@ -259,16 +357,41 @@ useEffect(() => {
                     // Hide the old AI result until the officer checks again.
                     setShowResult(false)
 
-                    // Reset the review button for the newly selected email.
-                    setReviewRequested(false)
-
-                    // Hide the previous email's reviewed answer.
-                    setReviewCompleted(false)
+                    
                 }}
             >
-            <strong>{email.customerName}</strong>
-            <span>{email.cardType}</span>
-            <small>{new Date(email.createdAt).toLocaleString('en-SG')}</small>
+            
+                {/* Customer name */}
+                <strong>{email.customerName}</strong>
+
+                {/* Customer's card */}
+                <span>{email.cardType}</span>
+
+                {/* Show whether this email has been checked by TrustLens. */}
+                <span
+                    className={`inbox-status ${email.answerId == null
+                            ? 'inbox-not-checked'
+                            : email.status === 'pending_review'
+                                ? 'inbox-under-review'
+                                : email.status === 'approved'
+                                    ? 'inbox-approved'
+                                    : 'inbox-checked'
+                        }`}
+                >
+                    {email.answerId == null
+                        ? 'Not Checked'
+                        : email.status === 'pending_review'
+                            ? 'Under Review'
+                            : email.status === 'approved'
+                                ? 'Approved'
+                                : 'Checked'}
+                </span>
+
+                {/* Date the customer email was received */}
+                <small>
+                    {new Date(email.createdAt).toLocaleString('en-SG')}
+                </small>
+
             </button>
           ))}
         </section>
@@ -292,6 +415,12 @@ useEffect(() => {
             <p>{selectedEmail?.question ?? 'No email selected.'}</p>
           </div>
             
+            {selectedEmail &&
+                selectedEmail.answerId == null &&
+                !selectedResult &&
+                !generatingAnswer && (
+                    <p>Not checked yet.</p>
+                )}
             
             {/* Check an existing answer or generate a new one. */}
             <button
@@ -563,99 +692,75 @@ useEffect(() => {
                                 )}
                         </div>
 
-                    
-                    {/* Allow the officer to request human review. */}
-                    <div className="review-action-section">
+                            
 
-                    {/* Show this button only if review has not been requested. */}
-                    {!reviewRequested ? (
+                              {/* Display the real human review status from the backend. */}
+                              <div className="review-action-section">
+
+                                  {/* Case 1: The answer is already waiting for a reviewer. */}
+                                  {isReviewPending ? (
+                                      <div className="review-success-message">
+
+                                          <div className="review-status-header">
+                                              <strong>Human Review</strong>
+                                              <span className="review-pending-badge">
+                                                  Pending Review
+                                              </span>
+                                          </div>
+
+                                          <p>
+                                              This answer has already been sent for human review.
+                                              Please wait for a reviewer to check it.
+                                          </p>
+
+                                          <p>
+                                              Do not send this AI answer to the customer yet.
+                                          </p>
+
+                                      </div>
+
+                                  ) : isReviewCompleted ? (
+
+                                      /* Case 2: The reviewer has already made a decision. */
+                                      <div className="review-success-message">
+
+                                          <div className="review-status-header">
+                                              <strong>Human Review</strong>
+                                              <span className="review-approved-badge">
+                                                  Review Completed
+                                              </span>
+                                          </div>
+
+                                          <p>
+                                              A human reviewer has completed the review.
+                                          </p>
+
+                                      </div>
+
+                                  ) : (
+
+                                      /* Case 3: No review has been requested yet. */
+                                        <button
+                                            className="send-review-button"
+                                            onClick={handleRequestReview}
+                                            disabled={sendingReview}
+                                        >
+                                            {sendingReview
+                                                ? 'Sending for Review...'
+                                                : 'Request Human Review'}
+                                        </button>
+                                  )}
+                                  {reviewError && (
+                                      <p role="alert" className="evidence-warning">
+                                          {reviewError}
+                                      </p>
+                                  )}
+
+                              </div>
 
                         
-                        <button
-                            className="send-review-button"
-
-                            // Save that the officer requested a review.
-                            onClick={() => setReviewRequested(true)}
-                        >
-                            {/* Change the button text based on the verification result. */}
-                            {needsReview
-                                ? 'Send for Human Review'
-                                : 'Request Manual Review'}
-                        </button>
-
-
-                    ) : (
-                        
-                        <div className="review-success-message">
-                            {/* Show the review status after the officer clicks the review button. */}
-
-                            
-                        {/* Show whether the review is pending or completed. */}
-                        <div className="review-status-header">
-
-                            <strong>Human Review</strong>
-
-                            <span
-                                className={
-                                    reviewCompleted
-                                        ? "review-approved-badge"
-                                        : "review-pending-badge"
-                                }
-                            >
-                                {reviewCompleted
-                                    ? "Review Completed"
-                                    : "Pending Review"}
-                            </span>
-
-                        </div>
-
-
-                            
-                            {/* Change the message based on the review status. */}
-                            <p>
-                                {reviewCompleted
-                                    ? "The demo reviewer has returned a reviewed answer. Check the response below."
-                                    : "This answer is waiting for a human reviewer to check it. Do not send it to the customer yet."}
-                            </p>
-
-
-                            {/* Explain that the review request is only stored in React for now. */}
-                            <small>
-                                Demo only — request recorded locally.
-                                Not yet sent to the backend or reviewer queue.
-                            </small>
-                            
-                            {/* Demo button to simulate a completed human review. */}
-                            {reviewRequested && !reviewCompleted && selectedResult.reviewedAnswer && (
-                            <button
-                                className="demo-review-button"
-                                onClick={() => setReviewCompleted(true)}
-                            >
-                                Simulate Reviewer Response (Demo)
-                            </button>
-                            )}
-
-                            {/* Show the reviewed answer after the demo reviewer responds. */}
-                            {reviewCompleted && selectedResult.reviewedAnswer && (
-                            <div className="reviewed-answer-section">
-
-                                <h4>Human-Reviewed Answer</h4>
-
-                                <p>{selectedResult.reviewedAnswer}</p>
-
-                                <small>
-                                Sample reviewer response only.
-                                Not received from the backend.
-                                </small>
-
-                            </div>
-                            )}
-
-
-                        </div>
-                    )}
+                
                     </div>
-                </div>
             </section>
         )}
       </div>
