@@ -389,6 +389,15 @@ Wipes all data and reloads the demo seed data. Use between demo runs only.
 - Success: `{ "message": "Database reset to initial seed state." }`
 - HTTP 403 `FORBIDDEN` for any other role, HTTP 400 `CONFIRMATION_REQUIRED` without the confirmation header
 
+### `POST /api/admin/reset/:emailId` (admin)
+
+Puts one email back to Not Checked, so Generate can be tested again. Deletes that email's answer, claims and review and keeps the email in the inbox. Every other email is untouched.
+
+- Same headers as the full reset: `X-Role: admin` and `X-Confirm-Reset: yes`
+- Success: `{ "emailId": "em_009", "removedAnswers": 1, "removedReviews": 1, "message": "em_009 is back to Not Checked." }`
+- HTTP 409 `SEEDED_EMAIL` for emails whose answer is part of the seed (em_001 to em_008): use the full reset for those
+- HTTP 404 `NOT_FOUND` for an unknown email, 403 and 400 as for the full reset
+
 ---
 
 ## 3. Live events (Socket.io)

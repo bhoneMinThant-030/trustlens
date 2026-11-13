@@ -1141,6 +1141,59 @@ function getFlaggedDocuments() {
   return { flaggedDocuments };
 }
 
+// Answers that ship with the demo seed. resetEmail refuses to delete these;
+// only the full reset (POST /api/admin/reset) brings them back.
+const SEEDED_ANSWER_IDS = ["a_101", "a_102", "a_103", "a_104", "a_105", "a_106", "a_107", "a_108"];
+
+/**
+ * Put one email back to "Not Checked": delete its answer, claims and review,
+ * keep the question so it stays in the inbox. Other emails are untouched.
+ */
+function resetEmail(emailId) {
+  const questions = db.prepare("SELECT id FROM questions WHERE email_id = ?").all(emailId);
+  if (questions.length === 0) {
+    const err = new Error(`Email ${emailId} not found`);
+    err.status = 404;
+    err.code = "NOT_FOUND";
+    throw err;
+  }
+
+  const questionIds = questions.map((q) => q.id);
+  const marks = questionIds.map(() => "?").join(", ");
+  const answers = db.prepare(`SELECT id FROM answers WHERE question_id IN (${marks})`).all(...questionIds);
+  const answerIds = answers.map((a) => a.id);
+
+  if (answerIds.some((id) => SEEDED_ANSWER_IDS.includes(id))) {
+    const err = new Error(
+      `${emailId} is part of the seeded demo data. Use POST /api/admin/reset to restore it.`
+    );
+    err.status = 409;
+    err.code = "SEEDED_EMAIL";
+    throw err;
+  }
+
+  let removedReviews = 0;
+  const transaction = db.transaction(() => {
+    answerIds.forEach((answerId) => {
+      db.prepare("DELETE FROM claims WHERE answer_id = ?").run(answerId);
+      removedReviews += db.prepare("DELETE FROM reviews WHERE answer_id = ?").run(answerId).changes;
+      db.prepare("DELETE FROM answers WHERE id = ?").run(answerId);
+    });
+    db.prepare(`
+      INSERT INTO system_audit_logs (action, details, timestamp)
+      VALUES (?, ?, ?)
+    `).run("EMAIL_RESET", JSON.stringify({ emailId, answerIds }), new Date().toISOString());
+  });
+  transaction();
+
+  return {
+    emailId,
+    removedAnswers: answerIds.length,
+    removedReviews,
+    message: answerIds.length ? `${emailId} is back to Not Checked.` : `${emailId} was already Not Checked.`
+  };
+}
+
 /**
  * Escalate an answer manually by officer
  */
@@ -1500,5 +1553,6 @@ module.exports = {
   getAllEmails,
   getCategoryMetrics,
   getFlaggedDocuments,
+  resetEmail,
   CATEGORIES
 };
