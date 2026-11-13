@@ -18,7 +18,8 @@ const {
   getAnswerByEmailId,
   getAllEmails,
   getCategoryMetrics,
-  getFlaggedDocuments
+  getFlaggedDocuments,
+  resetEmail
 } = require("./db");
 
 const app = express();
@@ -308,6 +309,34 @@ app.post("/api/admin/reset", (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: { code: "INTERNAL_ERROR", message: err.message }
+    });
+  }
+});
+
+/**
+ * POST /api/admin/reset/:emailId
+ * Puts one email back to Not Checked so Generate can be tested again.
+ * Same guard as the full reset. Seeded answered emails are refused (409).
+ */
+app.post("/api/admin/reset/:emailId", (req, res) => {
+  try {
+    if (getDemoUser(req).role !== "admin") {
+      return res.status(403).json({
+        error: { code: "FORBIDDEN", message: "Only admins can reset an email." }
+      });
+    }
+    if (req.headers["x-confirm-reset"] !== "yes") {
+      return res.status(400).json({
+        error: {
+          code: "CONFIRMATION_REQUIRED",
+          message: "Send header X-Confirm-Reset: yes to confirm."
+        }
+      });
+    }
+    res.json(resetEmail(req.params.emailId));
+  } catch (err) {
+    res.status(err.status || 500).json({
+      error: { code: err.code || "INTERNAL_ERROR", message: err.message }
     });
   }
 });

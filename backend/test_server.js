@@ -438,6 +438,64 @@ async function runTests() {
     JSON.stringify(flagged.map((f) => ({ docId: f.docId, version: f.version, reason: f.reason, corrections: f.corrections })))
   );
 
+  // Test 19: One email can be reset to Not Checked without touching the rest
+  resetSeedData();
+  const adminReset = { "x-user-id": "admin-1", "x-role": "admin", "x-confirm-reset": "yes" };
+  ["em_009", "em_010"].forEach((emailId, i) => {
+    saveAskResult({
+      questionId: `q_reset_${i}`,
+      answerId: `a_reset_${i}`,
+      emailId,
+      question: "test",
+      reviewTrigger: "auto_threshold",
+      lambdaResponse: {
+        type: "generated",
+        answer: "Live answer.",
+        category: "fees-charges",
+        confidence: 0.3,
+        claims: [{ text: "claim", label: "insufficient_evidence" }],
+        sources: []
+      }
+    });
+  });
+  const before19 = { answers: count("answers"), reviews: count("reviews") };
+  const t19 = await mockRequest(app, "POST", "/api/admin/reset/em_009", null, adminReset);
+  const after19 = { answers: count("answers"), reviews: count("reviews") };
+  const inbox19 = (await mockRequest(app, "GET", "/api/officer/emails", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer"
+  })).body.emails;
+  const row = (id) => inbox19.find((e) => e.emailId === id) || {};
+  assert(
+    t19.status === 200 &&
+      t19.body.removedAnswers === 1 &&
+      t19.body.removedReviews === 1 &&
+      after19.answers === before19.answers - 1 &&
+      after19.reviews === before19.reviews - 1 &&
+      row("em_009").answerId === null &&
+      row("em_010").status === "pending_review" &&
+      inbox19.length === 13,
+    "POST /api/admin/reset/:emailId puts one email back to Not Checked and leaves the others",
+    JSON.stringify({ body: t19.body, before19, after19 })
+  );
+
+  // Test 20: Per-email reset refuses seeded emails, unknown emails, non-admins
+  const t20a = await mockRequest(app, "POST", "/api/admin/reset/em_001", null, adminReset);
+  const t20b = await mockRequest(app, "POST", "/api/admin/reset/em_nope", null, adminReset);
+  const t20c = await mockRequest(app, "POST", "/api/admin/reset/em_010", null, {
+    "x-user-id": "officer-1",
+    "x-role": "officer",
+    "x-confirm-reset": "yes"
+  });
+  assert(
+    t20a.status === 409 && t20a.body.error?.code === "SEEDED_EMAIL" &&
+      t20b.status === 404 &&
+      t20c.status === 403 &&
+      db.prepare("SELECT COUNT(*) AS n FROM answers WHERE id = 'a_101'").get().n === 1,
+    "POST /api/admin/reset/:emailId refuses seeded (409), unknown (404) and non-admin (403)",
+    JSON.stringify([t20a.status, t20b.status, t20c.status])
+  );
+
   console.log("\n-------------------------------------------------");
   console.log(`Results: ${passed} passed, ${failed} failed`);
   console.log("-------------------------------------------------");
