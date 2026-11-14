@@ -1,5 +1,7 @@
 // useEffect runs code when the page first loads.
 import { useEffect, useRef, useState } from 'react'
+//update automatically without refreshing the browser
+import { io } from 'socket.io-client'
 
 // API functions used by the Officer Workspace.
 import {
@@ -78,6 +80,73 @@ useEffect(() => {
 }, [])
 
 
+    // Listen for completed human reviews from the backend.
+    useEffect(() => {
+
+        // Connect to the backend as the officer.
+        const socket = io(
+            import.meta.env.VITE_API_URL || 'http://localhost:3000',
+            {
+                query: {
+                    role: 'officer',
+                    userId: 'officer-1'
+                }
+            }
+        )
+
+        // When a reviewer completes a review, refresh the inbox.
+        async function handleReviewResolved(event) {
+            console.log('Human review completed:', event)
+
+            try {
+                const inbox = await getOfficerEmails()
+
+                // Update the status badges in the inbox.
+                setEmails(inbox.emails)
+
+                // Refresh the answer currently being viewed.
+                const currentEmailId = selectedEmailIdRef.current
+
+                if (currentEmailId) {
+                    const currentEmail = inbox.emails.find(
+                        (email) => email.emailId === currentEmailId
+                    )
+
+                    if (currentEmail) {
+                        setSelectedEmail(currentEmail)
+                    }
+
+                    // Retrieve the latest saved answer, including corrections.
+                    if (currentEmail?.answerId) {
+                        const updatedAnswer = await getEmailAnswer(currentEmailId)
+
+                        // Avoid displaying another customer's answer.
+                        if (selectedEmailIdRef.current === currentEmailId) {
+                            setApiAnswer(updatedAnswer)
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error('Unable to refresh completed review:', error)
+            }
+        }
+
+        socket.on('connect', () => console.log('Officer Socket.IO connected:', socket.id))
+        socket.on('connect_error', (error) => console.error('Socket.IO connection failed:', error.message))
+        // Subscribe to the event sent by the backend.
+        socket.on('review:resolved', handleReviewResolved)
+
+        // Disconnect when the Officer Workspace closes.
+        return () => {
+            socket.off('review:resolved', handleReviewResolved)
+            socket.disconnect()
+        }
+
+    }, [])
+
+
+
         // Send an existing AI answer to the human review queue.
         async function handleRequestReview() {
 
@@ -96,6 +165,9 @@ useEffect(() => {
             try {
                 // Send the request to the backend review queue.
                 await requestHumanReview(answerId)
+                // Refresh the inbox after requesting human review.
+                const updatedInbox = await getOfficerEmails()
+                setEmails(updatedInbox.emails)
 
                 // Remember that this answer has been submitted.
                 setSubmittedReviewIds((previous) =>
@@ -287,26 +359,29 @@ useEffect(() => {
         (claim) => claim.label === 'contradicted'
     ) ?? false
 
-    // Check whether the backend has already requested human review.
-    const hasPendingReview = selectedResult?.review?.status === 'pending'
-    // Get the human review information from the backend.
+    
+    // Get the review information from the backend.
     const backendReview = selectedResult?.review
 
-    // An answer is pending review if the backend says so,
-    // or if we successfully submitted it during this session.
+    // Check whether a reviewer has completed the review.
+    const isReviewCompleted =
+        selectedResult?.status === 'reviewed_approved' ||
+        selectedResult?.status === 'reviewed_corrected' ||
+        backendReview?.status === 'approved' ||
+        backendReview?.status === 'corrected'
+
+    // Check whether the answer is still waiting for review.
     const isReviewPending =
-        backendReview?.status === 'pending' ||
-        selectedResult?.status === 'pending_review' ||
+        !isReviewCompleted &&
         (
-            selectedResult?.answerId &&
-            submittedReviewIds.includes(selectedResult.answerId)
+            backendReview?.status === 'pending' ||
+            selectedResult?.status === 'pending_review'
         )
 
-    // Check whether a human reviewer has completed the review.
-    const isReviewCompleted =
-        backendReview?.status === 'approved' ||
-        backendReview?.status === 'rejected' ||
-        backendReview?.status === 'resolved'
+    // Check whether the backend automatically requested a review.
+    const hasPendingReview = isReviewPending
+
+
 
     // An answer needs review if:
     // 1. The backend has marked it for review,
@@ -367,25 +442,34 @@ useEffect(() => {
                 {/* Customer's card */}
                 <span>{email.cardType}</span>
 
-                {/* Show whether this email has been checked by TrustLens. */}
+            
+                {/* Display the latest verification or human review status. */}
                 <span
                     className={`inbox-status ${email.answerId == null
                             ? 'inbox-not-checked'
-                            : email.status === 'pending_review'
-                                ? 'inbox-under-review'
-                                : email.status === 'approved'
-                                    ? 'inbox-approved'
-                                    : 'inbox-checked'
+                            : email.status === 'reviewed_corrected' ||
+                                email.status === 'reviewed_approved'
+                                ? 'inbox-human-reviewed'
+                                : email.status === 'pending_review'
+                                    ? 'inbox-under-review'
+                                    : email.status === 'approved'
+                                        ? 'inbox-approved'
+                                        : 'inbox-checked'
                         }`}
                 >
                     {email.answerId == null
                         ? 'Not Checked'
-                        : email.status === 'pending_review'
-                            ? 'Under Review'
-                            : email.status === 'approved'
-                                ? 'Approved'
-                                : 'Checked'}
+                        : email.status === 'reviewed_corrected'
+                            ? 'Human Corrected'
+                            : email.status === 'reviewed_approved'
+                                ? 'Human Approved'
+                                : email.status === 'pending_review'
+                                    ? 'Under Review'
+                                    : email.status === 'approved'
+                                        ? 'AI Checked'
+                                        : 'Checked'}
                 </span>
+
 
                 {/* Date the customer email was received */}
                 <small>
@@ -489,19 +573,36 @@ useEffect(() => {
 
                     
                     {/* Telling the officer whether human review is required. */}
-                    <div className={`review-warning ${needsReview ? 'review-required' : 'review-passed'}`}>
+                    
+                    <div className={`review-warning ${isReviewCompleted
+                            ? 'review-completed'
+                            : needsReview
+                                ? 'review-required'
+                                : 'review-passed'
+                        }`}>
 
-                        {needsReview ? (
+                        {isReviewCompleted ? (
                             <>
-                                <h4> Human Review Required</h4>
+                                <h4>✓ Human Review Completed</h4>
                                 <p>
-                                    This answer has low confidence or a contradicted claim.
-                                    Do not send it to the customer until a reviewer approves it.
+                                    {selectedResult.status === 'reviewed_corrected'
+                                        ? 'The original AI answer was corrected by a human reviewer. The reviewed answer is shown below.'
+                                        : 'A human reviewer has approved this answer.'}
                                 </p>
                             </>
+                            ) : needsReview ? (
+                                <>
+                                    <h4>Human Review Required</h4>
+
+                                    <p>
+                                        {isReviewPending && backendReview?.trigger === 'manual'
+                                            ? 'The officer requested a human review for this answer. Please wait for the reviewer to complete the review before sending it to the customer.'
+                                            : 'This answer has low confidence or a contradicted claim. Do not send it to the customer until a reviewer approves it.'}
+                                    </p>
+                                </>
                         ) : (
                             <>
-                                <h4> Evidence Check Passed</h4>
+                                <h4>Evidence Check Passed</h4>
                                 <p>
                                     This answer meets the evidence-check rules.
                                     Review the suggested reply before using it.
@@ -510,6 +611,7 @@ useEffect(() => {
                         )}
 
                     </div>
+
 
 
                     
@@ -524,7 +626,11 @@ useEffect(() => {
                             }`}
                     >
                         {/* Show the confidence score. */}
-                        <h4>Confidence Score</h4>
+                              <h4>
+                                  {isReviewCompleted
+                                      ? 'Original AI Confidence'
+                                      : 'AI Confidence Score'}
+                              </h4>
 
                         <p className="confidence-score">
                             {confidencePercent}%
@@ -532,21 +638,41 @@ useEffect(() => {
 
                         {/* Show whether the answer needs review. */}
                         <p className="confidence-status">
-                            {selectedResult.status === 'pending_review'
-                                ? 'Under Review'
-                                : selectedResult.status === 'approved'
-                                    ? 'Checked'
-                                    : selectedResult.status ?? 'Unknown'}
+                            {selectedResult.status === 'reviewed_corrected'
+                                ? 'Human Reviewed — Corrected'
+                                : selectedResult.status === 'reviewed_approved'
+                                    ? 'Human Reviewed — Approved'
+                                    : selectedResult.status === 'pending_review'
+                                        ? 'Awaiting Human Review'
+                                        : selectedResult.status === 'approved'
+                                            ? 'AI Verification Passed'
+                                            : 'AI Answer Checked'}
                         </p>
+
                     </div>
 
 
-                    {/* This displays the sample AI answer. */}
-                    <div className="ai-answer-section">
-                        <h4>Suggested AI Answer</h4>
 
-                        <p>{selectedResult.answer}</p>
-                    </div>
+                        {/* Display the AI answer or the final human-reviewed answer. */}
+                        <div className={`ai-answer-section ${isReviewCompleted ? 'ai-answer-reviewed' : ''}`}>
+
+                            <h4>
+                                {isReviewCompleted
+                                    ? 'Human-Reviewed Answer'
+                                    : 'Suggested AI Answer'}
+                            </h4>
+
+                            {isReviewCompleted && (
+                                <p className="reviewed-label">
+                                    ✓ {selectedResult.status === 'reviewed_corrected'
+                                        ? 'Corrected by Human Reviewer'
+                                        : 'Approved by Human Reviewer'}
+                                </p>
+                            )}
+
+                            <p>{selectedResult.answer}</p>
+                        </div>
+
 
                     
                     {/* Display the verification reasons returned by the backend. */}
@@ -578,7 +704,18 @@ useEffect(() => {
                     
                         {/* Display the AI claims and their supporting evidence. */}
                         <div className="claims-section">
-                            <h4>Claim-by-Claim Verification</h4>
+                              <h4>
+                                  {isReviewCompleted
+                                      ? 'Original AI Claim Verification'
+                                      : 'Claim-by-Claim Verification'}
+                              </h4>
+
+                              {isReviewCompleted && (
+                                  <p className="original-claims-note">
+                                      These verification results belong to the original AI answer,
+                                      before human review. The corrected answer is shown above.
+                                  </p>
+                              )}
 
                             {/* Loop through the claims returned by the backend. */}
                             {selectedResult.claims?.map((claim, index) => {
@@ -719,25 +856,51 @@ useEffect(() => {
 
                                       </div>
 
-                                  ) : isReviewCompleted ? (
+                                  
+                              ) : isReviewCompleted ? (
 
-                                      /* Case 2: The reviewer has already made a decision. */
-                                      <div className="review-success-message">
+                                  /* The reviewer has finished checking this answer. */
+                                  <div className="review-success-message">
 
-                                          <div className="review-status-header">
-                                              <strong>Human Review</strong>
-                                              <span className="review-approved-badge">
-                                                  Review Completed
-                                              </span>
-                                          </div>
-
-                                          <p>
-                                              A human reviewer has completed the review.
-                                          </p>
-
+                                      <div className="review-status-header">
+                                          <strong>Human Review</strong>
+                                          <span className="review-approved-badge">
+                                              Review Completed
+                                          </span>
                                       </div>
 
-                                  ) : (
+                                      {/* Show whether the answer was approved or corrected. */}
+                                      <p>
+                                          <strong>Decision:</strong>{' '}
+                                          {selectedResult.status === 'reviewed_corrected'
+                                              ? 'Corrected by Reviewer'
+                                              : 'Approved by Reviewer'}
+                                      </p>
+
+                                      {/* Display the corrected answer, if the backend provides it. */}
+                                      {backendReview?.decision?.correctedAnswer && (
+                                          <div className="reviewed-answer-section">
+                                              <h4>Human-Reviewed Answer</h4>
+                                              <p>{backendReview.decision.correctedAnswer}</p>
+                                          </div>
+                                      )}
+
+                                      {/* Explain why the reviewer made this decision. */}
+                                      {backendReview?.decision?.reason && (
+                                          <p>
+                                              <strong>Reviewer's Reason:</strong>{' '}
+                                              {backendReview.decision.reason}
+                                          </p>
+                                      )}
+
+                                      <p>
+                                          The human review has been completed.
+                                      </p>
+
+                                  </div>
+
+                              ) : (
+
 
                                       /* Case 3: No review has been requested yet. */
                                         <button
