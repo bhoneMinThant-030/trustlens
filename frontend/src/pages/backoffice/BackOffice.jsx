@@ -3,25 +3,23 @@ import { USE_MOCK } from '../../api/client'
 import { DEMO_USERS } from '../../constants/labels'
 import ReviewQueue from './ReviewQueue'
 import Dashboard from './Dashboard'
-import Recommendations from './Recommendations'
-import ApprovedAnswers from './ApprovedAnswers'
-import { DashboardIcon, FixIcon, ReviewIcon, ShieldIcon } from './Icons'
+import FlaggedDocuments from './FlaggedDocuments'
+import { DashboardIcon, FixIcon, ReviewIcon } from './Icons'
 import './BackOffice.css'
 import './AdminTabs.css'
 
 /*
-  Back office screen (Frontend 2).
+  Back office screen.
   Reviewers approve or correct flagged answers.
-  Admins track quality and approve system changes.
-  "Reviewers fix answers; only admins change the system."
+  Admins track quality and see which documents caused corrections.
+  "Reviewers fix answers; admins fix the source."
 */
 
 // Which tabs each role can open.
 const TABS = [
   { id: 'reviews', label: 'Review queue', Icon: ReviewIcon, roles: ['reviewer', 'admin'] },
   { id: 'dashboard', label: 'Dashboard', Icon: DashboardIcon, roles: ['admin'] },
-  { id: 'recommendations', label: 'Recommendations', Icon: FixIcon, roles: ['admin'] },
-  { id: 'approved', label: 'Approved answers', Icon: ShieldIcon, roles: ['admin'] },
+  { id: 'flagged', label: 'Flagged documents', Icon: FixIcon, roles: ['admin'] },
 ]
 
 // The line under each page title. The review queue reads differently for each role.
@@ -30,9 +28,9 @@ const PAGE_TEXT = {
     reviewer: 'Flagged answers wait here for a human check before they go back to the officer.',
     admin: 'You can read every review. Only reviewers can approve or correct.',
   },
-  dashboard: 'Answers checked this week, and where they needed help.',
-  recommendations: 'Suggested from recurring failures. Nothing changes until an admin approves it.',
-  approved: 'Standard questions get this wording word for word, without the AI.',
+  dashboard: 'Answers checked so far, and where they needed help.',
+  flagged:
+    'Unofficial or outdated documents found in answers a reviewer had to correct. Fix the source, and the next customer gets the right answer.',
 }
 
 function BackOffice() {
@@ -101,8 +99,7 @@ function BackOffice() {
         </div>
         {activeTab === 'reviews' && <ReviewQueue user={user} />}
         {activeTab === 'dashboard' && <Dashboard user={user} />}
-        {activeTab === 'recommendations' && <Recommendations user={user} />}
-        {activeTab === 'approved' && <ApprovedAnswers user={user} />}
+        {activeTab === 'flagged' && <FlaggedDocuments user={user} />}
       </main>
     </div>
   )

@@ -32,17 +32,13 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 ```json
 {
   "requestId": "q_123",
-  "question": "Can the annual fee on my card be waived?",
-  "approvedAnswers": [
-    { "id": "aa_017", "version": "2", "category": "fees-charges",
-      "question": "Is the annual fee waived?", "answer": "The annual fee is waived for the first year ..." }
-  ]
+  "question": "Can the annual fee on my card be waived?"
 }
 ```
 
 - `question`: at most 2,000 characters
-- `approvedAnswers` (optional): reviewer-approved wording. Node builds the list from SQLite `approved_answers` (`query_pattern` → `question`, `approved_text` → `answer`). Store the real question text, not keywords: matching compares questions
-- The Lambda never reads a database. No list, or an empty one, means no matching. Broken items are skipped, and at most 200 are used
+- `approvedAnswers`: **not used in this build.** Reusing approved wording was dropped (it skips the checker and goes stale when policy changes), so Node does not send it. The Lambda still accepts the field; without it, every answer is drafted and checked
+- The Lambda never reads a database
 
 ### Response: generated answer
 
@@ -118,7 +114,9 @@ Two extra fields, also returned (Node can store them; screens can ignore them):
 - `relevance.answersQuestion`: Model B's view on whether the draft addresses what was asked, ignoring whether its facts are right (`true`, `false` or `null` if unknown). `false` sets `confidence` to `0`
 - `meta`: for debugging and the evaluation. `retrieval` is the passages found for the question, best first. `approvedBestScore` is the closest approved answer's similarity (`null` when none were sent), kept even when it is below the 0.85 needed for reuse
 
-### Response: approved answer
+### Response: approved answer (not used in this build)
+
+Node sends no `approvedAnswers`, so this response does not happen. Kept for reference.
 
 ```json
 {
@@ -148,7 +146,7 @@ Codes: `BAD_REQUEST`, `BEDROCK_ERROR`, `INDEX_NOT_FOUND`, `INDEX_MISMATCH` (inde
 
 - Errors come back as a normal payload, so Node checks for an `error` key
 - A crash or a timeout (60 s) comes back with `FunctionError` set on the invoke result instead. Node treats both as `LAMBDA_FAILED`
-- A typical answer takes 1 to 15 s (an approved answer about 1 s). Show a loading state on the officer screen
+- A typical answer takes 5 to 15 s. Show a loading state on the officer screen
 
 ---
 

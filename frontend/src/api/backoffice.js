@@ -2,19 +2,17 @@
   Back office API calls (reviewer and admin).
   Endpoints and payloads: docs/api-contract.md, section 2.
 
-  In mock mode the data lives in memory, so a decision made in the
-  Review queue stays until the page is reloaded.
+  With VITE_USE_MOCK=true the data lives in memory, so a decision made
+  in the Review queue stays until the page is reloaded.
 */
 
 import { request, USE_MOCK, ApiError } from './client'
 import { mockReviews } from '../data/mockReviews'
-import { mockApprovedAnswers, mockCategoryStats, mockRecommendations } from '../data/mockAdmin'
+import { mockCategoryStats } from '../data/mockAdmin'
 
-// ---------- Mock store (used until the Node API is ready) ----------
+// ---------- Mock store (VITE_USE_MOCK=true only) ----------
 
 const mockReviewStore = structuredClone(mockReviews)
-const mockRecommendationStore = structuredClone(mockRecommendations)
-let mockApprovedStore = structuredClone(mockApprovedAnswers)
 
 // Small delay so loading states can be seen and tested.
 function mockDelay(value, ms = 250) {
@@ -79,11 +77,7 @@ export async function decideReview(reviewId, { decision, correctedAnswer, reason
 
 // ---------- Dashboard (admin) ----------
 
-/*
-  GET /api/stats
-  The contract has pendingTotal and pendingByCategory. The rest
-  (answeredTotal, reviewedTotal, byCategory) is a proposal for Backend 2.
-*/
+// GET /api/stats
 export async function getStats({ user } = {}) {
   if (USE_MOCK) {
     const pending = mockReviewStore.filter((review) => review.status === 'pending')
@@ -105,99 +99,64 @@ export async function getStats({ user } = {}) {
   return request('/api/stats', { user })
 }
 
-// ---------- Recommendations (admin, proposed endpoints) ----------
+// ---------- Flagged documents (admin) ----------
 
-function publicRecommendation(recommendation) {
-  // Hide the mock-only field from the screen code.
-  // eslint-disable-next-line no-unused-vars
-  const { mockRetestResult, ...rest } = recommendation
-  return rest
-}
+/*
+  Same rule as the backend: every unofficial or outdated source in an
+  answer a reviewer corrected, grouped by document and version.
+  Only used with VITE_USE_MOCK=true.
+*/
+function mockFlaggedDocuments() {
+  const groups = new Map()
+  const corrected = mockReviewStore.filter((review) => review.status === 'corrected')
 
-// GET /api/recommendations
-export async function listRecommendations({ user } = {}) {
-  if (USE_MOCK) {
-    return mockDelay({ recommendations: mockRecommendationStore.map(publicRecommendation) })
-  }
-  return request('/api/recommendations', { user })
-}
+  for (const review of corrected) {
+    const officialSources = review.sources
+      .filter((source) => source.authority === 'official' && !source.outdated)
+      .map(({ id, title, version, excerpt }) => ({ id, title, version, excerpt }))
 
-// GET /api/recommendations/:id (poll this while a re-test is running)
-export async function getRecommendation(id, { user } = {}) {
-  if (USE_MOCK) {
-    const recommendation = mockRecommendationStore.find((item) => item.id === id)
-    if (!recommendation) throw new ApiError('NOT_FOUND', `Recommendation ${id} not found`, 404)
-    return mockDelay(publicRecommendation(recommendation))
-  }
-  return request(`/api/recommendations/${id}`, { user })
-}
+    for (const source of review.sources) {
+      const unofficial = source.authority === 'unofficial'
+      if (!unofficial && !source.outdated) continue
 
-// POST /api/recommendations/:id/decision
-// decision: 'approved' | 'rejected'. Approving starts a re-test of the failed tests.
-export async function decideRecommendation(id, { decision, reason }, { user }) {
-  if (USE_MOCK) {
-    const recommendation = mockRecommendationStore.find((item) => item.id === id)
-    if (!recommendation) throw new ApiError('NOT_FOUND', `Recommendation ${id} not found`, 404)
-    recommendation.status = decision
-    recommendation.decision = {
-      decision,
-      reason,
-      admin: user.id,
-      decidedAt: new Date().toISOString(),
+      const key = `${source.docId}@${source.version}`
+      if (!groups.has(key)) {
+        groups.set(key, {
+          docId: source.docId,
+          version: source.version,
+          title: source.title,
+          category: source.category,
+          reason: unofficial ? 'unofficial' : 'outdated',
+          newerVersion: source.newerVersion ?? null,
+          corrections: 0,
+          lastFlaggedAt: null,
+          excerpt: source.excerpt,
+          evidence: [],
+        })
+      }
+      const group = groups.get(key)
+      if (group.evidence.some((item) => item.reviewId === review.id)) continue
+      group.corrections += 1
+      group.lastFlaggedAt = review.decision.decidedAt
+      group.evidence.push({
+        reviewId: review.id,
+        question: review.question,
+        aiAnswer: review.answer,
+        correctedAnswer: review.decision.correctedAnswer,
+        reviewer: review.decision.reviewer,
+        decidedAt: review.decision.decidedAt,
+        officialSources,
+      })
     }
-    if (decision === 'approved') {
-      recommendation.retest = { status: 'running', passed: null, total: null, finishedAt: null }
-      // Pretend the re-test takes a few seconds.
-      setTimeout(() => {
-        recommendation.retest = {
-          status: 'done',
-          ...recommendation.mockRetestResult,
-          finishedAt: new Date().toISOString(),
-        }
-      }, 2500)
-    }
-    return mockDelay(publicRecommendation(recommendation))
   }
-  return request(`/api/recommendations/${id}/decision`, {
-    method: 'POST',
-    user,
-    body: { decision, reason },
-  })
+
+  return [...groups.values()].sort(
+    (a, b) => b.corrections - a.corrections || b.lastFlaggedAt.localeCompare(a.lastFlaggedAt),
+  )
 }
 
-// ---------- Approved answers (admin, proposed endpoints) ----------
-
-// GET /api/approved-answers
-export async function listApprovedAnswers({ user } = {}) {
-  if (USE_MOCK) return mockDelay({ approvedAnswers: mockApprovedStore })
-  return request('/api/approved-answers', { user })
-}
-
-// POST /api/approved-answers
-// Saves a reviewer-corrected answer as approved wording for reuse.
-export async function createApprovedAnswer(
-  { fromReviewId, answer, category, sampleQuestions },
-  { user },
-) {
-  if (USE_MOCK) {
-    const created = {
-      id: `aa_${fromReviewId}`,
-      version: '2026.11',
-      category,
-      sampleQuestions,
-      answer,
-      sourceUrl: null,
-      owner: user.id,
-      approvedAt: new Date().toISOString().slice(0, 10),
-      timesUsed: 0,
-      fromReviewId,
-    }
-    mockApprovedStore = [created, ...mockApprovedStore]
-    return mockDelay(created)
-  }
-  return request('/api/approved-answers', {
-    method: 'POST',
-    user,
-    body: { fromReviewId, answer, category, sampleQuestions },
-  })
+// GET /api/flagged-documents
+export async function listFlaggedDocuments({ user } = {}) {
+  if (USE_MOCK) return mockDelay({ flaggedDocuments: mockFlaggedDocuments() })
+  return request('/api/flagged-documents', { user })
 }

@@ -2,15 +2,16 @@
   Shared API client for the React app.
   Every call follows docs/api-contract.md (React <-> Node).
 
-  While the Node back end is not ready, USE_MOCK is true and the
-  back office reads from src/api/mockBackofficeStore.js instead.
-  To use the real API, create frontend/.env.local with:
-    VITE_USE_MOCK=false
-    VITE_API_URL=http://localhost:3000
+  The back office uses the real Node API by default.
+  To use the built-in sample data instead (no backend needed),
+  create frontend/.env.local with:
+    VITE_USE_MOCK=true
+  To point at a backend that is not on this laptop:
+    VITE_API_URL=http://<laptop-ip>:3000
 */
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 // Error thrown for any failed request. `code` comes from the
 // contract's error shape: { "error": { "code", "message" } }
