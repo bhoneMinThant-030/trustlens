@@ -199,6 +199,7 @@ function ReviewQueue({ user }) {
               >
                 <span className="bo-row-title">{review.question}</span>
                 <span className="bo-row-meta">
+                  {review.emailId?.startsWith('chat_') && 'Officer chat · '}
                   {review.id} · {categoryLabel(review.category)} ·{' '}
                   {formatDateTime(review.createdAt)}
                 </span>

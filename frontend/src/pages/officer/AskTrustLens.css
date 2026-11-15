@@ -1,0 +1,268 @@
+/* "Ask TrustLens" chat tab on the officer screen. Colours match OfficerWorkspace.css. */
+
+.ask-trustlens {
+  max-width: 900px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.ask-head h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.ask-head p {
+  margin: 0 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 240px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.chat-empty {
+  margin: auto 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.chat-bubble-officer {
+  align-self: flex-end;
+  background-color: #d71920;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bubble-bot {
+  align-self: flex-start;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-loading {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.chat-error {
+  border-color: #fecaca;
+  background-color: #fff1f2;
+  color: #b91c1c;
+}
+
+.chat-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.chat-status-good {
+  color: #166534;
+}
+
+.chat-status-wait {
+  color: #92400e;
+}
+
+.chat-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.chat-badge-good {
+  background-color: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.chat-badge-wait {
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.chat-answer {
+  margin: 0 0 6px;
+}
+
+.chat-meta,
+.chat-muted {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.chat-original,
+.chat-evidence {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.chat-original summary,
+.chat-evidence summary {
+  cursor: pointer;
+  color: #374151;
+  font-weight: bold;
+}
+
+.chat-original p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.chat-claim {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chat-claim p {
+  margin: 6px 0 0;
+}
+
+.chat-claim blockquote {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid #d1d5db;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.chat-sources {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #374151;
+}
+
+.chat-sources li {
+  margin-bottom: 4px;
+}
+
+.chat-flag {
+  color: #92400e;
+}
+
+.chat-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.chat-starter {
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chat-starter:hover:not(:disabled) {
+  border-color: #d71920;
+  color: #d71920;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.chat-send {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background-color: #d71920;
+  color: #ffffff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.chat-send:disabled,
+.chat-starter:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-input-error {
+  margin: 6px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+/* Tabs in the officer header: Customer inbox / Ask TrustLens */
+.officer-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.officer-tabs button {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.officer-tabs button.active {
+  border-color: #d71920;
+  background-color: #fff1f2;
+  color: #d71920;
+  font-weight: bold;
+}
+
+@media (max-width: 700px) {
+  .chat-bubble {
+    max-width: 100%;
+  }
+
+  .officer-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+/* The officer layout sets display: grid, which would override the hidden attribute. */
+.officer-workspace [hidden] {
+  display: none !important;
+}
