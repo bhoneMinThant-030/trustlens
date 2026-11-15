@@ -1443,6 +1443,8 @@ function getAllEmails() {
     FROM questions q
     LEFT JOIN answers a ON q.id = a.question_id
     LEFT JOIN reviews r ON a.id = r.answer_id
+    -- Questions from the officer's "Ask TrustLens" chat (chat_ ids) are not customer emails
+    WHERE q.email_id IS NULL OR q.email_id NOT LIKE 'chat!_%' ESCAPE '!'
     ORDER BY q.id ASC
   `).all();
 

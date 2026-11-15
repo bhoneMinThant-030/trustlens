@@ -496,6 +496,29 @@ async function runTests() {
     JSON.stringify([t20a.status, t20b.status, t20c.status])
   );
 
+  // Test 21: An "Ask TrustLens" chat question is reviewed like any answer, but stays out of the inbox
+  resetSeedData();
+  const officer = { "x-user-id": "officer-1", "x-role": "officer" };
+  const t21 = await mockRequest(app, "POST", "/api/ask", {
+    emailId: "chat_test_1",
+    question: "What is the monthly cashback cap on the OCBC 365 card?"
+  }, officer);
+  const inbox21 = (await mockRequest(app, "GET", "/api/officer/emails", null, officer)).body.emails;
+  const pending21 = (await mockRequest(app, "GET", "/api/reviews?status=pending", null, {
+    "x-user-id": "reviewer-1",
+    "x-role": "reviewer"
+  })).body.reviews;
+  assert(
+    t21.status === 200 &&
+      t21.body.emailId === "chat_test_1" &&
+      t21.body.review?.status === "pending" &&
+      inbox21.length === 13 &&
+      !inbox21.some((e) => e.emailId === "chat_test_1") &&
+      pending21.some((r) => r.emailId === "chat_test_1"),
+    "Chat question (chat_ id) goes to review but not into the officer inbox",
+    JSON.stringify({ status: t21.status, review: t21.body.review, inbox: inbox21.length })
+  );
+
   console.log("\n-------------------------------------------------");
   console.log(`Results: ${passed} passed, ${failed} failed`);
   console.log("-------------------------------------------------");

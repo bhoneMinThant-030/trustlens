@@ -217,7 +217,9 @@ function ReviewDetail({ review, canDecide, onDecide }) {
     <div className="bo-detail">
       <div className="bo-card bo-question">
         <p className="bo-mono">
-          {review.id} · email {review.emailId} · {review.officerId} ·{' '}
+          {review.id} ·{' '}
+          {review.emailId?.startsWith('chat_') ? 'Officer chat' : `email ${review.emailId}`} ·{' '}
+          {review.officerId} ·{' '}
           {formatDateTime(review.createdAt)}
         </p>
         <h2>{review.question}</h2>

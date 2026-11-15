@@ -10,9 +10,13 @@ import {
   generateAnswer,
   requestHumanReview
 } from '../../api/officer'
+import AskTrustLens from './AskTrustLens'
 import './OfficerWorkspace.css'
 
 function OfficerWorkspace() {
+  // Which tab is open: 'inbox' (customer emails) or 'chat' (Ask TrustLens).
+const [view, setView] = useState('inbox')
+
   // Store emails received from the backend.
 const [emails, setEmails] = useState([])
 
@@ -47,7 +51,7 @@ const [sendingReview, setSendingReview] = useState(false)
 const [reviewError, setReviewError] = useState('')
 
 // Stores review requests successfully submitted in this session.
-const [submittedReviewIds, setSubmittedReviewIds] = useState([])
+const [, setSubmittedReviewIds] = useState([])
 
 // Remember the currently selected email, even during an API request.
 const selectedEmailIdRef = useRef(null)
@@ -401,12 +405,34 @@ useEffect(() => {
     <div className="officer-workspace">
       <header className="officer-header">
         <h1>TrustLens</h1>
+        <nav className="officer-tabs" role="tablist" aria-label="Officer workspace">
+          <button
+            role="tab"
+            aria-selected={view === 'inbox'}
+            className={view === 'inbox' ? 'active' : ''}
+            onClick={() => setView('inbox')}
+          >
+            Customer inbox
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === 'chat'}
+            className={view === 'chat' ? 'active' : ''}
+            onClick={() => setView('chat')}
+          >
+            Ask TrustLens
+          </button>
+        </nav>
         <span>Officer Workspace</span>
       </header>
 
-      
+      {/* Both views stay mounted, so switching tabs keeps the chat thread and the selected email. */}
+      <div hidden={view !== 'chat'}>
+        <AskTrustLens />
+      </div>
+
     {/* Change the layout based on whether AI results are visible. */}
-    <div className={`officer-layout ${showResult && selectedResult ? 'with-result' : 'without-result'}`}>
+    <div hidden={view !== 'inbox'} className={`officer-layout ${showResult && selectedResult ? 'with-result' : 'without-result'}`}>
         <section className="officer-inbox">
           <h2>Customer Inbox</h2>
 
