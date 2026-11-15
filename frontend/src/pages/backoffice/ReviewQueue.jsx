@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { io } from 'socket.io-client'
 import { decideReview, listReviews } from '../../api/backoffice'
+import { API_URL, USE_MOCK } from '../../api/client'
 import {
   CATEGORIES,
   STATUS_LABELS,
@@ -30,6 +32,16 @@ function ReviewQueue({ user }) {
   const [toast, setToast] = useState('')
 
   const [reloadKey, setReloadKey] = useState(0)
+  const toastTimer = useRef(null)
+
+  // One toast at a time; a newer message replaces the older one.
+  function showToast(message) {
+    setToast(message)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 4000)
+  }
+
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
 
   // Load every review; the filters work on the loaded list.
   // Runs on first render, when the role changes, and on Refresh.
@@ -48,6 +60,18 @@ function ReviewQueue({ user }) {
       ignore = true
     }
   }, [user, reloadKey])
+
+  // Live updates: a newly flagged answer appears without pressing Refresh.
+  // The backend sends review:new to the "reviewers" room.
+  useEffect(() => {
+    if (USE_MOCK) return undefined
+    const socket = io(API_URL, { query: { role: 'reviewer', userId: user.id } })
+    socket.on('review:new', (event) => {
+      setReloadKey((key) => key + 1)
+      showToast(`New review ${event.reviewId}: ${TRIGGER_LABELS[event.trigger] ?? 'flagged answer'}.`)
+    })
+    return () => socket.disconnect()
+  }, [user])
 
   function loadReviews() {
     setLoading(true)
@@ -82,8 +106,7 @@ function ReviewQueue({ user }) {
     // Move on to the next pending review; the decided one is under "Resolved".
     setSelectedId(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    setToast(`${updated.id} ${updated.status}. The answer has been sent back to the officer.`)
-    setTimeout(() => setToast(''), 4000)
+    showToast(`${updated.id} ${updated.status}. The answer has been sent back to the officer.`)
   }
 
   return (

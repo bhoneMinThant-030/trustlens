@@ -78,7 +78,7 @@ function Dashboard({ user }) {
           overline="Pending reviews"
           value={stats.pendingTotal}
           unit={stats.pendingTotal === 1 ? 'answer' : 'answers'}
-          text={`${stats.reviewedTotal} of the ${stats.answeredTotal} answers checked this week were sent to review.`}
+          text={`${stats.reviewedTotal} of the ${stats.answeredTotal} answers checked so far were sent to review.`}
           stats={[
             { label: 'Review rate', value: formatPercent(reviewRate) },
             { label: 'Checked', value: stats.answeredTotal },
