@@ -1,10 +1,16 @@
+/*
+  Officer screen styles.
+  Colours and the font come from src/styles/theme.css (shared with the back office).
+  Tags and the confidence meter reuse the back office classes (bo-label, bo-meter).
+*/
 
 .officer-workspace {
   min-height: 100vh;
-  padding: 30px;
-  background-color: #f5f7fb;
-  color: #1f2937;
-  font-family: Arial, sans-serif;
+  background-color: var(--bo-page);
+  color: var(--bo-ink);
+  font-family: 'Albert Sans', 'Segoe UI', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
   text-align: left;
 }
 
@@ -12,710 +18,451 @@
   box-sizing: border-box;
 }
 
-.officer-header {
+.officer-workspace button,
+.officer-workspace input,
+.officer-workspace textarea {
+  font-family: inherit;
+}
+
+.officer-workspace :focus-visible {
+  outline: 2px solid var(--bo-blue);
+  outline-offset: 2px;
+}
+
+/* Grid and flex layouts would otherwise override the hidden attribute. */
+.officer-workspace [hidden] {
+  display: none !important;
+}
+
+/* ---------- Top bar ---------- */
+
+.ow-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 24px;
+  height: 60px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--bo-border);
   background-color: #ffffff;
-  padding: 20px 25px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border-left: 5px solid #e32636;
 }
 
-.officer-header h1 {
-  margin: 0;
-  color: #d71920;
-  font-size: 28px;
+.ow-tabs {
+  display: flex;
+  gap: 4px;
+  height: 100%;
 }
 
-.officer-header span {
-  color: #6b7280;
-  font-size: 14px;
+.ow-tabs button {
+  padding: 0 14px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--bo-ink-3);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
+.ow-tabs button:hover {
+  color: var(--bo-ink);
+}
 
+.ow-tabs button.active {
+  border-bottom-color: var(--bo-red);
+  color: var(--bo-ink);
+}
 
-/* Basic layout settings for the Officer Workspace. */
+.ow-topbar-end {
+  margin-left: auto;
+}
+
+/* ---------- Layout ---------- */
+
+.ow-main {
+  padding: 24px;
+}
+
 .officer-layout {
   display: grid;
   gap: 20px;
   align-items: start;
 }
 
-/* Before checking: Inbox takes 25%, Email Details takes 75%. */
-.officer-layout.without-result {
-  grid-template-columns: 25fr 75fr;
-}
-
-/* After checking: Show Inbox, Email Details and AI Verification. */
-.officer-layout.with-result {
-  grid-template-columns: 25fr 35fr 40fr;
-}
-
-
-
-
-/* Give all three sections the same card design. */
-.officer-inbox,
-.officer-details,
-.officer-verification-panel {
-  background-color: white;
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-
-  /* Prevent long content from stretching the columns. */
-  min-width: 0;
-}
-
-
-.officer-inbox h2,
-.officer-details h2 {
-  margin-top: 0;
-  font-size: 20px;
-}
-
-.officer-email-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  padding: 16px;
-  margin-bottom: 12px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #1f2937;
-  text-align: left;
-  cursor: pointer;
-  gap: 6px;
-}
-
-.officer-email-item:hover {
-  background-color: #f9fafb;
-}
-
-.officer-email-item.selected {
-  background-color: #fff1f2;
-  border-color: #e32636;
-}
-
-.officer-email-item span {
-  font-size: 14px;
-}
-
-.officer-email-item small {
-  color: #6b7280;
-}
-
-.officer-details > p {
-  margin: 12px 0;
-  line-height: 1.6;
-}
-
-.officer-message {
-  margin-top: 24px;
-  padding: 20px;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  line-height: 1.7;
-}
-
-.officer-message h3 {
-  margin-top: 0;
-}
-
-@media (max-width: 700px) {
-  .officer-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .officer-workspace {
-    padding: 16px;
-  }
-}
-.trustlens-check-button {
-  margin-top: 20px;
-  padding: 14px 24px;
-  background-color: #d71920;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.trustlens-check-button:hover {
-  background-color: #a81319;
-}
-
-.trustlens-result {
-  margin-top: 24px;
-  padding: 24px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-}
-
-.trustlens-result h3 {
-  margin-bottom: 20px;
-  color: #d71920;
-}
-
-
-/* Basic design for the confidence score box. */
-.confidence-section {
-  padding: 18px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-/* Make the confidence percentage large and clear. */
-.confidence-score {
-  font-size: 32px;
-  font-weight: bold;
-  margin: 10px 0;
-}
-
-/* Make the verification status easy to read. */
-.confidence-status {
-  font-weight: 600;
-}
-
-/* Green: answer is supported by evidence. */
-.confidence-high {
-  background-color: #f0fdf4;
-  color: #15803d;
-}
-
-/* Amber: answer needs human review. */
-.confidence-medium {
-  background-color: #fffbeb;
-  color: #b45309;
-}
-
-/* Red: very low confidence, human review needed. */
-.confidence-low {
-  background-color: #fef2f2;
-  color: #b91c1c;
-}
-
-
-.ai-answer-section {
-  background-color: #f9fafb;
-  padding: 18px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  line-height: 1.7;
-}
-
-.verification-section {
-  background-color: #f9fafb;
-  padding: 18px;
-  border-radius: 10px;
-}
-
-.verification-section p {
-  margin-top: 10px;
-}
-
-
-/* Main section that contains all verified claims. */
-.claims-section {
-  margin-top: 24px;
-}
-
-/* Add spacing below the section heading. */
-.claims-section h4 {
-  margin-bottom: 16px;
-}
-
-/* Each claim is displayed inside its own card. */
-.claim-card {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 18px;
-  margin-bottom: 14px;
-}
-
-/* Place the claim number and status beside each other. */
-.claim-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-/* Basic design for the status label. */
-.claim-status {
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-/* Green means the claim has supporting evidence. */
-.claim-supported {
-  background-color: #dcfce7;
-  color: #166534;
-}
-
-/* Amber means there is not enough evidence. */
-.claim-insufficient {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-/* Red means the claim contradicts the evidence. */
-.claim-contradicted {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-/* Display the evidence source below each claim. */
-.claim-source {
-  background-color: #f9fafb;
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 12px;
-  font-size: 13px;
-}
-
-/* Add some spacing between the source title and text. */
-.claim-source p {
-  margin-top: 6px;
-}
-
-
-/* Add space above the human review button. */
-.review-action-section {
-  margin-top: 24px;
-}
-
-/* Style the button used to request human review. */
-.send-review-button {
-  background-color: #b91c1c;
-  color: white;
-  border: none;
-  padding: 14px 22px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* Make the button darker when the mouse is over it. */
-.send-review-button:hover {
-  background-color: #991b1b;
-}
-
-/* Show a confirmation after the button is clicked. */
-.review-success-message {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  padding: 16px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-
-/* Allow the Officer Workspace to fill the screen. */
-.officer-workspace {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
-
-/* Keep the inbox visible when the page scrolls. */
-.officer-inbox {
-  position: sticky;
-  top: 20px;
-  align-self: start;
-}
-
-/* Make the AI results easier to read. */
-.trustlens-result {
-  margin-top: 20px;
-  width: 100%;
-}
-
-/* Make the layout work better on smaller screens. */
-@media (max-width: 900px) {
-
-  /* Stop the inbox from sticking on small screens. */
-  .officer-inbox {
-    position: static;
-  }
-
-  /* Reduce spacing inside the result panel. */
-  .trustlens-result {
-    padding: 16px;
-  }
-}
-
-/* Remove the extra card border inside the AI panel. */
-.officer-verification-panel .trustlens-result {
-  margin-top: 0;
-  padding: 0;
-  border: none;
-}
-
-/* Show a helpful message before the officer checks an email. */
-.officer-verification-panel {
-  min-height: 350px;
-}
-
-
-/* Use two columns on medium-sized screens. */
-@media (max-width: 1100px) {
-  .officer-layout.with-result {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  /* Move AI Verification below the other sections. */
-  .officer-verification-panel {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Stack all sections on smaller screens. */
-@media (max-width: 700px) {
-  .officer-layout.with-result,
-  .officer-layout.without-result {
-    grid-template-columns: 1fr;
-  }
-
-  .officer-verification-panel {
-    grid-column: auto;
-  }
-}
-
-
-/* Warning box shown above the AI verification result. */
-.review-warning {
-  padding: 16px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-/* Remove extra space above the warning heading. */
-.review-warning h4 {
-  margin: 0 0 8px;
-}
-
-/* Make the warning message easy to read. */
-.review-warning p {
-  margin: 0;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-/* Amber warning when human review is required. */
-.review-required {
-  background-color: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #92400e;
-}
-
-/* Green message when the evidence check passes. */
-.review-passed {
-  background-color: #f0fdf4;
-  border: 1px solid #86efac;
-  color: #166534;
-}
-
-
-/* Add spacing inside the review confirmation message. */
-.review-success-message p {
-  margin: 8px 0;
-  line-height: 1.6;
-}
-
-/* Make the demo notice smaller than the main message. */
-.review-success-message small {
-  font-size: 12px;
-  font-weight: normal;
-}
-
-
-/* Separate the exact source passage from the source name. */
-.source-passage {
-  margin-top: 12px;
-  padding: 14px;
-  background-color: #ffffff;
-  border-left: 4px solid #d71920;
-  border-radius: 6px;
-}
-
-/* Make the evidence text easy to read. */
-.source-passage p {
-  margin: 8px 0 0;
-  line-height: 1.6;
-  color: #374151;
-}
-
-
-/* Add spacing above the expandable evidence section. */
-.source-details {
-  margin-top: 12px;
-}
-
-/* Style the clickable heading used to show the evidence. */
-.source-details summary {
-  padding: 12px;
-  background-color: #fff1f2;
-  color: #b91c1c;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-/* Change the background when the officer points at it. */
-.source-details summary:hover {
-  background-color: #ffe4e6;
-}
-
-/* Add spacing between the button and expanded passage. */
-.source-details .source-passage {
-  margin-top: 10px;
-}
-
-
-
-
-/* Place the review title and status beside each other. */
-.review-status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-/* Show pending review using an amber label. */
-.review-pending-badge {
-  background-color: #fef3c7;
-  color: #92400e;
-  padding: 7px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-/* Keep the review message easy to read. */
-.review-success-message p {
-  margin: 12px 0;
-  line-height: 1.6;
-}
-
-
-/* Button used to simulate a reviewer response during testing. */
-.demo-review-button {
-  display: block;
-  margin-top: 16px;
-  padding: 12px 18px;
-  background-color: #374151;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-/* Make the demo button darker when hovered. */
-.demo-review-button:hover {
-  background-color: #1f2937;
-}
-
-/* Display the answer returned by the demo reviewer. */
-.reviewed-answer-section {
-  margin-top: 18px;
-  padding: 18px;
-  background-color: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 10px;
-}
-
-/* Style the completed review label. */
-.review-approved-badge {
-  display: inline-block;
-  margin-bottom: 12px;
-  padding: 6px 10px;
-  background-color: #dcfce7;
-  color: #166534;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-/* Make the reviewed answer easy to read. */
-.reviewed-answer-section p {
-  line-height: 1.7;
-}
-
-
-/* Small status badge shown in the customer inbox. */
-.inbox-status {
-  display: inline-block;
-  width: fit-content;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* No AI answer has been generated. */
-.inbox-not-checked {
-  background-color: #f1f3f5;
-  color: #555;
-}
-
-/* The AI answer is waiting for human review. */
-.inbox-under-review {
-  background-color: #fff3cd;
-  color: #856404;
-}
-
-/* The answer has been approved. */
-.inbox-approved {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-/* An AI answer exists, but it has another status. */
-.inbox-checked {
-  background-color: #e7f1ff;
-  color: #174ea6;
-}
-
-
-/* Keep the inbox at a manageable height. */
-.officer-inbox {
-  max-height: calc(100vh - 220px);
-  min-height: 300px;
-
-  /* Allow scrolling inside the inbox. */
+/* Each column scrolls on its own, so scrolling the inbox keeps the details and result in place.
+   Height = window - top bar (60px) - page padding (2 x 24px). */
+.officer-layout > .ow-card {
+  max-height: calc(100vh - 108px);
   overflow-y: auto;
-  overflow-x: hidden;
-
-  /* Keep the scrollbar within the inbox panel. */
   overscroll-behavior: contain;
 }
 
-/* Make the scrollbar narrower. */
-.officer-inbox::-webkit-scrollbar {
-  width: 7px;
+/* Before checking: inbox and email details. */
+.officer-layout.without-result {
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
 }
 
-.officer-inbox::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+/* After checking: inbox, email details and the verification result. */
+.officer-layout.with-result {
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 1.2fr) minmax(0, 1.6fr);
+}
+
+.ow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--bo-border);
+  border-radius: 12px;
+  background-color: #ffffff;
+}
+
+.ow-card h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ow-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background-color: #efeff2;
+  color: var(--bo-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ow-muted {
+  margin: 0;
+  color: var(--bo-ink-3);
+  font-size: 13.5px;
+}
+
+.ow-label {
+  margin: 0 0 6px;
+  color: var(--bo-ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ow-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--bo-red-wash);
+  color: var(--bo-red-deep);
+  font-size: 14px;
+}
+
+/* ---------- Inbox ---------- */
+
+.ow-email-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ow-email {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--bo-border);
   border-radius: 10px;
+  background-color: #ffffff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.officer-inbox::-webkit-scrollbar-track {
-  background-color: transparent;
+.ow-email:hover {
+  border-color: var(--bo-field);
 }
 
-
-/* Highlight answers that have completed human review. */
-.ai-answer-reviewed {
-    background-color: #f0fdf4;
-    border: 2px solid #86efac;
-    border-left: 5px solid #16a34a;
+.ow-email.selected {
+  border-color: var(--bo-red);
+  background-color: var(--bo-red-wash);
+  box-shadow: inset 3px 0 0 var(--bo-red);
 }
 
-/* Make the reviewed answer heading green. */
-.ai-answer-reviewed h4 {
-    color: #15803d;
+.ow-email-name {
+  font-weight: 700;
 }
 
-/* Show a clear human-reviewed label. */
-.reviewed-label {
-    display: inline-block;
-    background-color: #dcfce7;
-    color: #166534;
-    padding: 7px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: bold;
-    margin-bottom: 14px;
-}
-/* Green message when human review has been completed. */
-.review-completed {
-    background-color: #f0fdf4;
-    border: 1px solid #86efac;
-    color: #166534;
-}
-/* Green badge for answers completed by a human reviewer. */
-.inbox-human-reviewed {
-    background-color: #dcfce7;
-    color: #166534;
+.ow-email-question {
+  overflow: hidden;
+  color: var(--bo-ink-2);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.original-claims-note {
-    font-size: 13px;
-    color: #6b7280;
-    line-height: 1.6;
-    margin-bottom: 16px;
+.ow-email-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
 }
 
-/* =========================================
-   STEP 32: INDEPENDENT PANEL SCROLLING
-   ========================================= */
-
-/* Keep the three panels aligned at the top. */
-.officer-layout {
-    align-items: start;
+.ow-email-foot .ow-muted {
+  font-size: 12.5px;
 }
 
-/* Each panel gets its own scrolling area. */
-.officer-inbox,
-.officer-details,
-.officer-verification-panel {
-    height: calc(100vh - 180px);
-    max-height: calc(100vh - 180px);
-    min-height: 350px;
-
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    overscroll-behavior: contain;
+/* Status chips: Not checked, Verified, In review, Reviewed */
+.ow-chip {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-/* Keep the panels visible and prevent unwanted sticky behaviour. */
-.officer-inbox,
-.officer-details,
-.officer-verification-panel {
-    position: static;
+.ow-chip-neutral {
+  background-color: #efeff2;
+  color: var(--bo-ink-2);
 }
 
-/* Make scrollbars narrow and neat. */
-.officer-inbox::-webkit-scrollbar,
-.officer-details::-webkit-scrollbar,
-.officer-verification-panel::-webkit-scrollbar {
-    width: 7px;
+.ow-chip-good {
+  background-color: var(--bo-green-soft);
+  color: var(--bo-green);
 }
 
-.officer-inbox::-webkit-scrollbar-thumb,
-.officer-details::-webkit-scrollbar-thumb,
-.officer-verification-panel::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 10px;
+.ow-chip-wait {
+  background-color: var(--bo-amber-soft);
+  color: var(--bo-amber);
 }
 
-/* On smaller screens, use normal page scrolling. */
+/* ---------- Email details ---------- */
+
+.ow-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.ow-facts > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ow-facts dt {
+  color: var(--bo-ink-3);
+}
+
+.ow-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ow-details .bo-tag {
+  align-self: flex-start;
+}
+
+.ow-message {
+  padding: 14px 16px;
+  border: 1px solid var(--bo-line);
+  border-radius: 10px;
+  background-color: #fafafb;
+}
+
+.ow-message p:last-child {
+  margin: 0;
+  font-size: 16px;
+}
+
+.ow-primary,
+.ow-secondary {
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ow-primary {
+  border: none;
+  background-color: var(--bo-red);
+  color: #ffffff;
+}
+
+.ow-primary:hover:not(:disabled) {
+  background-color: var(--bo-red-deep);
+}
+
+.ow-secondary {
+  border: 1px solid var(--bo-field);
+  background-color: #ffffff;
+  color: var(--bo-ink);
+}
+
+.ow-secondary:hover:not(:disabled) {
+  border-color: #b9b9c1;
+}
+
+.ow-primary:disabled,
+.ow-secondary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- Verification result ---------- */
+
+.ow-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-left: 4px solid;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+}
+
+.ow-banner strong {
+  font-size: 16px;
+}
+
+.ow-banner-good {
+  border-left-color: var(--bo-green);
+  background-color: var(--bo-green-soft);
+  color: var(--bo-green);
+}
+
+.ow-banner-wait {
+  border-left-color: var(--bo-amber);
+  background-color: var(--bo-amber-soft);
+  color: var(--bo-amber);
+}
+
+.ow-answer {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--bo-border);
+  border-radius: 8px;
+  font-size: 15.5px;
+}
+
+.ow-answer-reviewed {
+  border-color: #b9dcc8;
+  background-color: #f3faf6;
+}
+
+.ow-original {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.ow-original summary {
+  color: var(--bo-ink-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ow-original p {
+  margin: 6px 0 0;
+  color: var(--bo-ink-3);
+  text-decoration: line-through;
+}
+
+.ow-claim {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bo-line);
+}
+
+.ow-claim p {
+  margin: 0;
+}
+
+.ow-claim blockquote {
+  align-self: stretch;
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--bo-field);
+  background-color: #fafafb;
+  color: var(--bo-ink-2);
+  font-size: 14px;
+}
+
+.ow-source-line,
+.ow-sources li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--bo-ink-2);
+  font-size: 13.5px;
+}
+
+.ow-source-line a {
+  color: var(--bo-blue);
+  font-weight: 600;
+}
+
+.ow-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ow-result-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bo-line);
+}
+
 @media (max-width: 1100px) {
-    .officer-inbox,
-    .officer-details,
-    .officer-verification-panel {
-        height: auto;
-        max-height: none;
-        min-height: 0;
-        overflow: visible;
-    }
+  .officer-layout.without-result,
+  .officer-layout.with-result {
+    grid-template-columns: 1fr;
+  }
+
+  /* One column: let the page scroll normally. */
+  .officer-layout > .ow-card {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 700px) {
+  .ow-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 16px;
+    gap: 8px 16px;
+  }
+
+  .ow-tabs {
+    height: 40px;
+  }
+
+  .ow-main {
+    padding: 16px;
+  }
 }

@@ -1,0 +1,32 @@
+/*
+  Shared TrustLens look for the officer screen and the back office.
+  OCBC's brand font is Geomanist (paid, licensed to OCBC), so we use Albert Sans,
+  a free Google font with the same round shapes, slanted t and two-storey a.
+  The --bo- prefix comes from the back office, where these colours started.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&display=swap');
+
+.backoffice,
+.officer-workspace {
+  --bo-red: #d32f2a;
+  --bo-red-deep: #a81c1a;
+  --bo-red-soft: #fbe6e4;
+  --bo-red-wash: #fdf3f2;
+  --bo-ink: #1c1c20;
+  --bo-ink-2: #4f4f57;
+  --bo-ink-3: #6b6b73;
+  --bo-page: #f4f4f6;
+  --bo-line: #ececef;
+  --bo-border: #e1e1e6;
+  --bo-field: #d4d4da;
+  --bo-blue: #2b5c9e;
+  --bo-blue-soft: #e7eefa;
+  --bo-amber: #8f5a1b;
+  --bo-amber-soft: #f8ecdb;
+  --bo-green: #27734f;
+  --bo-green-soft: #e2f1e8;
+  --bo-purple: #5b3fa3;
+  --bo-purple-soft: #ece8f8;
+  --bo-mono: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+}

@@ -11,6 +11,13 @@ import {
   requestHumanReview
 } from '../../api/officer'
 import AskTrustLens from './AskTrustLens'
+import { REVIEW_REASONS, inboxStatus } from './reviewText'
+import {
+  CLAIM_LABELS,
+  CONFIDENCE_THRESHOLD,
+  categoryLabel,
+  formatDateTime,
+} from '../../constants/labels'
 import './OfficerWorkspace.css'
 
 function OfficerWorkspace() {
@@ -341,71 +348,92 @@ useEffect(() => {
 
 
   const [showResult, setShowResult] = useState(false)
-    // Use the real AI answer received from the backend.
-    // Only display an AI answer if it belongs to the selected email.
-    // This prevents showing another customer's answer.
-    const selectedResult =
-        apiAnswer?.emailId === selectedEmail?.emailId
-            ? apiAnswer
-            : null
 
-    
-  
-    // Convert the backend confidence (0 to 1) into a percentage (0 to 100).
-    // Example: 0.85 becomes 85.
-    const confidencePercent = selectedResult
-        ? Math.round(selectedResult.confidence * 100)
-        : 0
+  // Only show an AI answer if it belongs to the selected email.
+  const selectedResult = apiAnswer?.emailId === selectedEmail?.emailId ? apiAnswer : null
 
-    // Check whether any AI claim contradicts the evidence.
-    // Backend labels use lowercase words such as "contradicted".
-    const hasContradiction = selectedResult?.claims?.some(
-        (claim) => claim.label === 'contradicted'
-    ) ?? false
+  const confidence = typeof selectedResult?.confidence === 'number' ? selectedResult.confidence : null
+  const backendReview = selectedResult?.review
 
-    
-    // Get the review information from the backend.
-    const backendReview = selectedResult?.review
+  const isReviewCompleted =
+    selectedResult?.status === 'reviewed_approved' ||
+    selectedResult?.status === 'reviewed_corrected' ||
+    backendReview?.status === 'approved' ||
+    backendReview?.status === 'corrected'
 
-    // Check whether a reviewer has completed the review.
-    const isReviewCompleted =
-        selectedResult?.status === 'reviewed_approved' ||
-        selectedResult?.status === 'reviewed_corrected' ||
-        backendReview?.status === 'approved' ||
-        backendReview?.status === 'corrected'
+  const isReviewPending =
+    !isReviewCompleted &&
+    (backendReview?.status === 'pending' || selectedResult?.status === 'pending_review')
 
-    // Check whether the answer is still waiting for review.
-    const isReviewPending =
-        !isReviewCompleted &&
-        (
-            backendReview?.status === 'pending' ||
-            selectedResult?.status === 'pending_review'
-        )
+  const hasContradiction = selectedResult?.claims?.some((claim) => claim.label === 'contradicted') ?? false
 
-    // Check whether the backend automatically requested a review.
-    const hasPendingReview = isReviewPending
+  // Same rule as the backend: review when flagged, contradicted or below the threshold.
+  const needsReview = selectedResult
+    ? isReviewPending || hasContradiction || (confidence ?? 0) < CONFIDENCE_THRESHOLD
+    : false
 
+  const wasCorrected = selectedResult?.status === 'reviewed_corrected'
+  const citedIds = new Set(selectedResult?.claims?.map((claim) => claim.sourceId).filter(Boolean))
+  const otherSources = selectedResult?.sources?.filter((source) => !citedIds.has(source.id)) ?? []
 
+  // One banner that tells the officer whether the answer can be sent.
+  let banner = null
+  if (selectedResult) {
+    if (isReviewCompleted) {
+      banner = {
+        tone: 'good',
+        title: wasCorrected ? 'Reviewed: corrected' : 'Reviewed: approved',
+        text: 'A reviewer checked this answer. You can send it.',
+      }
+    } else if (isReviewPending) {
+      banner = {
+        tone: 'wait',
+        title: 'Sent to review',
+        text: `${REVIEW_REASONS[backendReview?.trigger] ?? 'Flagged for a human check'}. Don't send it yet.`,
+      }
+    } else if (needsReview) {
+      banner = { tone: 'wait', title: 'Needs a human check', text: "Don't send it until a reviewer approves it." }
+    } else {
+      banner = {
+        tone: 'good',
+        title: 'Verified',
+        text: 'Every claim is backed by a current official source. Read it before sending.',
+      }
+    }
+  }
 
-    // An answer needs review if:
-    // 1. The backend has marked it for review,
-    // 2. Its confidence is below 70%, or
-    // 3. At least one claim is contradicted.
-    const needsReview = selectedResult
-        ? hasPendingReview ||
-        confidencePercent < 70 ||
-        hasContradiction ||
-        selectedResult.status === 'pending_review'
-        : false
+  function selectEmail(email) {
+    // Remember the selection straight away, so late responses for other emails are ignored.
+    selectedEmailIdRef.current = email.emailId
+    setSelectedEmail(email)
+    setShowResult(false)
+  }
 
-
-
+  function sourceTags(source) {
+    return (
+      <>
+        <span className={`bo-label bo-authority-${source.authority}`}>
+          {source.authority === 'official' ? 'Official' : 'Unofficial'}
+        </span>
+        {source.outdated && (
+          <span className="bo-label bo-label-outdated">
+            Outdated{source.newerVersion ? `, replaced by v${source.newerVersion}` : ''}
+          </span>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="officer-workspace">
-      <header className="officer-header">
-        <h1>TrustLens</h1>
-        <nav className="officer-tabs" role="tablist" aria-label="Officer workspace">
+      <header className="ow-topbar">
+        <p className="bo-wordmark">
+          <strong>OCBC</strong>
+          <span className="bo-wordmark-rule" />
+          TrustLens
+          <span className="bo-wordmark-sub">Officer workspace</span>
+        </p>
+        <nav className="ow-tabs" role="tablist" aria-label="Officer workspace">
           <button
             role="tab"
             aria-selected={view === 'inbox'}
@@ -423,534 +451,232 @@ useEffect(() => {
             Ask TrustLens
           </button>
         </nav>
-        <span>Officer Workspace</span>
       </header>
 
       {/* Both views stay mounted, so switching tabs keeps the chat thread and the selected email. */}
-      <div hidden={view !== 'chat'}>
+      <div className="ow-main" hidden={view !== 'chat'}>
         <AskTrustLens />
       </div>
 
-    {/* Change the layout based on whether AI results are visible. */}
-    <div hidden={view !== 'inbox'} className={`officer-layout ${showResult && selectedResult ? 'with-result' : 'without-result'}`}>
-        <section className="officer-inbox">
-          <h2>Customer Inbox</h2>
+      <div
+        hidden={view !== 'inbox'}
+        className={`ow-main officer-layout ${showResult && selectedResult ? 'with-result' : 'without-result'}`}
+      >
+        <section className="ow-card ow-inbox">
+          <div className="ow-card-head">
+            <h2>Customer inbox</h2>
+            <span className="ow-count">{emails.length}</span>
+          </div>
 
-        {loadingEmails && <p>Loading customer emails...</p>}
+          {loadingEmails && <p className="ow-muted">Loading customer emails...</p>}
+          {emailError && (
+            <p role="alert" className="ow-error">
+              {emailError}
+            </p>
+          )}
+          {!loadingEmails && !emailError && emails.length === 0 && (
+            <p className="ow-muted">No customer emails found.</p>
+          )}
 
-        {emailError && <p role="alert">{emailError}</p>}
-
-        {!loadingEmails && !emailError && emails.length === 0 && (
-            <p>No customer emails found.</p>
-        )}
-
-        {emails.map((email) => (
-            <button
-              key={email.emailId}
-              className={`officer-email-item ${selectedEmail?.emailId === email.emailId ? 'selected' : ''}`}
-                onClick={() => {
-                    // Immediately remember which email the officer selected.
-                    selectedEmailIdRef.current = email.emailId
-
-                    // Change the currently selected email.
-                    setSelectedEmail(email)
-
-                    // Hide the old AI result until the officer checks again.
-                    setShowResult(false)
-
-                    
-                }}
-            >
-            
-                {/* Customer name */}
-                <strong>{email.customerName}</strong>
-
-                {/* Customer's card */}
-                <span>{email.cardType}</span>
-
-            
-                {/* Display the latest verification or human review status. */}
-                <span
-                    className={`inbox-status ${email.answerId == null
-                            ? 'inbox-not-checked'
-                            : email.status === 'reviewed_corrected' ||
-                                email.status === 'reviewed_approved'
-                                ? 'inbox-human-reviewed'
-                                : email.status === 'pending_review'
-                                    ? 'inbox-under-review'
-                                    : email.status === 'approved'
-                                        ? 'inbox-approved'
-                                        : 'inbox-checked'
-                        }`}
+          <div className="ow-email-list">
+            {emails.map((email) => {
+              const chip = inboxStatus(email)
+              return (
+                <button
+                  key={email.emailId}
+                  className={`ow-email ${selectedEmail?.emailId === email.emailId ? 'selected' : ''}`}
+                  onClick={() => selectEmail(email)}
                 >
-                    {email.answerId == null
-                        ? 'Not Checked'
-                        : email.status === 'reviewed_corrected'
-                            ? 'Human Corrected'
-                            : email.status === 'reviewed_approved'
-                                ? 'Human Approved'
-                                : email.status === 'pending_review'
-                                    ? 'Under Review'
-                                    : email.status === 'approved'
-                                        ? 'AI Checked'
-                                        : 'Checked'}
-                </span>
-
-
-                {/* Date the customer email was received */}
-                <small>
-                    {new Date(email.createdAt).toLocaleString('en-SG')}
-                </small>
-
-            </button>
-          ))}
+                  <span className="ow-email-name">{email.customerName}</span>
+                  <span className="ow-email-question">{email.question}</span>
+                  <span className="ow-email-foot">
+                    <span className={`ow-chip ow-chip-${chip.tone}`}>{chip.label}</span>
+                    <span className="ow-muted">{formatDateTime(email.createdAt)}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </section>
 
-        <section className="officer-details">
-          <h2>Email Details</h2>
+        <section className="ow-card ow-details">
+          <h2>Email details</h2>
 
-            {selectedEmail ? (
-                <>
-                    <p><strong>From:</strong> {selectedEmail.customerName} ({selectedEmail.customerEmail})</p>
-                    <p><strong>Card:</strong> {selectedEmail.cardType}</p>
-                    <p><strong>Category:</strong> {selectedEmail.category}</p>
-                    <p><strong>Date:</strong> {new Date(selectedEmail.createdAt).toLocaleString('en-SG')}</p>
-                </>
-            ) : (
-                <p>Select an email to view its details.</p>
+          {selectedEmail ? (
+            <>
+              <dl className="ow-facts">
+                <div>
+                  <dt>From</dt>
+                  <dd>
+                    {selectedEmail.customerName}
+                    <span className="ow-muted"> · {selectedEmail.customerEmail}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Card</dt>
+                  <dd>{selectedEmail.cardType}</dd>
+                </div>
+                <div>
+                  <dt>Received</dt>
+                  <dd>{formatDateTime(selectedEmail.createdAt)}</dd>
+                </div>
+              </dl>
+              <span className="bo-tag">{categoryLabel(selectedEmail.category)}</span>
+
+              <div className="ow-message">
+                <p className="ow-label">Customer message</p>
+                <p>{selectedEmail.question}</p>
+              </div>
+
+              <button
+                className="ow-primary"
+                disabled={loadingAnswer || generatingAnswer}
+                onClick={() => (selectedResult ? setShowResult(true) : handleGenerateAnswer())}
+              >
+                {generatingAnswer
+                  ? 'Checking… (5 to 15 seconds)'
+                  : loadingAnswer
+                    ? 'Loading answer…'
+                    : selectedResult
+                      ? 'View TrustLens result'
+                      : 'Check with TrustLens'}
+              </button>
+              {selectedEmail.answerId == null && !selectedResult && !generatingAnswer && (
+                <p className="ow-muted">Not checked yet.</p>
+              )}
+            </>
+          ) : (
+            <p className="ow-muted">Select an email to see its details.</p>
+          )}
+
+          {generationError && (
+            <p role="alert" className="ow-error">
+              {generationError}
+            </p>
+          )}
+          {answerError && (
+            <p role="alert" className="ow-error">
+              Unable to load the answer: {answerError}
+            </p>
+          )}
+        </section>
+
+        {showResult && selectedResult && (
+          <section className="ow-card ow-result">
+            <h2>TrustLens verification</h2>
+
+            <div className={`ow-banner ow-banner-${banner.tone}`}>
+              <strong>{banner.title}</strong>
+              <span>{banner.text}</span>
+            </div>
+
+            {confidence !== null && (
+              <div className="ow-confidence">
+                <p className="bo-confidence">
+                  <span>{isReviewCompleted ? 'Original AI confidence' : 'AI confidence'}</span>
+                  <strong className={confidence < CONFIDENCE_THRESHOLD ? 'bo-low' : ''}>
+                    {Math.round(confidence * 100)}%
+                  </strong>
+                </p>
+                {/* Bar with a tick where the review threshold sits */}
+                <div className="bo-meter" aria-hidden="true">
+                  <span style={{ width: `${confidence * 100}%` }} />
+                  <i style={{ left: `${CONFIDENCE_THRESHOLD * 100}%` }} />
+                </div>
+              </div>
             )}
 
-          <div className="officer-message">
-            <h3>Customer Message</h3>
-            <p>{selectedEmail?.question ?? 'No email selected.'}</p>
-          </div>
-            
-            {selectedEmail &&
-                selectedEmail.answerId == null &&
-                !selectedResult &&
-                !generatingAnswer && (
-                    <p>Not checked yet.</p>
-                )}
-            
-            {/* Check an existing answer or generate a new one. */}
-            <button
-                className="trustlens-check-button"
+            <div>
+              <p className="ow-label">
+                {isReviewCompleted
+                  ? "Reviewer's answer"
+                  : needsReview
+                    ? "Suggested answer (don't send yet)"
+                    : 'Suggested answer'}
+              </p>
+              <p className={`ow-answer ${isReviewCompleted ? 'ow-answer-reviewed' : ''}`}>
+                {selectedResult.answer}
+              </p>
+              {wasCorrected && selectedResult.aiAnswer && selectedResult.aiAnswer !== selectedResult.answer && (
+                <details className="ow-original">
+                  <summary>Original AI answer</summary>
+                  <p>{selectedResult.aiAnswer}</p>
+                </details>
+              )}
+              {backendReview?.decision?.reason && (
+                <p className="ow-muted">Reviewer: {backendReview.decision.reason}</p>
+              )}
+            </div>
 
-                // Prevent clicks when no email is selected,
-                // while loading, or while generating an answer.
-                disabled={
-                    !selectedEmail ||
-                    loadingAnswer ||
-                    generatingAnswer
-                }
-
-                onClick={() => {
-                    // If an answer already exists, display it.
-                    if (selectedResult) {
-                        setShowResult(true)
-                    } else {
-                        // Otherwise, generate a new answer through the backend.
-                        handleGenerateAnswer()
-                    }
-                }}
-            >
-                {generatingAnswer
-                    ? 'Generating AI Answer...'
-                    : loadingAnswer
-                        ? 'Loading AI Answer...'
-                        : selectedResult
-                            ? 'View TrustLens Result'
-                            : 'Generate with TrustLens'}
-            </button>
-
-                  {/* Show an error if AI generation fails. */}
-                  {generationError && (
-                      <p role="alert" className="evidence-warning">
-                          {generationError}
+            <div>
+              <p className="ow-label">
+                {isReviewCompleted ? 'Claims in the original AI answer' : 'Claims'} (
+                {selectedResult.claims?.length ?? 0})
+              </p>
+              {(selectedResult.claims ?? []).length === 0 && (
+                <p className="ow-muted">No claims could be checked.</p>
+              )}
+              {selectedResult.claims?.map((claim, index) => {
+                const source = selectedResult.sources?.find((item) => item.id === claim.sourceId)
+                return (
+                  <div className="ow-claim" key={claim.id ?? index}>
+                    <span className={`bo-label bo-label-${claim.label}`}>
+                      {CLAIM_LABELS[claim.label] ?? claim.label}
+                    </span>
+                    <p>{claim.text}</p>
+                    {claim.quote && <blockquote>{claim.quote}</blockquote>}
+                    {source && (
+                      <p className="ow-source-line">
+                        <span>
+                          {source.title} · v{source.version}
+                        </span>
+                        {sourceTags(source)}
+                        {source.url && (
+                          <a href={source.url} target="_blank" rel="noopener noreferrer">
+                            Open
+                          </a>
+                        )}
                       </p>
-                  )}
-
-
-                {/* Show an error if the backend request failed. */}
-                {answerError && (
-                    <p role="alert" className="evidence-warning">
-                        Unable to load AI answer: {answerError}
-                    </p>
-                )}
-                
-
-            {/* End of the Email Details section. */}
-            </section>
-
-            
-
-            
-            {/* Show the AI Verification panel only after checking the email. */}
-            {showResult && selectedResult && (
-
-                // This section becomes the third column of our layout.
-                <section className="officer-verification-panel">
-
-                    {/* This box contains the AI verification results. */}
-                    <div className="trustlens-result">
-
-
-                    <h3>TrustLens AI Verification</h3>
-
-                    
-                    {/* Telling the officer whether human review is required. */}
-                    
-                    <div className={`review-warning ${isReviewCompleted
-                            ? 'review-completed'
-                            : needsReview
-                                ? 'review-required'
-                                : 'review-passed'
-                        }`}>
-
-                        {isReviewCompleted ? (
-                            <>
-                                <h4>✓ Human Review Completed</h4>
-                                <p>
-                                    {selectedResult.status === 'reviewed_corrected'
-                                        ? 'The original AI answer was corrected by a human reviewer. The reviewed answer is shown below.'
-                                        : 'A human reviewer has approved this answer.'}
-                                </p>
-                            </>
-                            ) : needsReview ? (
-                                <>
-                                    <h4>Human Review Required</h4>
-
-                                    <p>
-                                        {isReviewPending && backendReview?.trigger === 'manual'
-                                            ? 'The officer requested a human review for this answer. Please wait for the reviewer to complete the review before sending it to the customer.'
-                                            : 'This answer has low confidence or a contradicted claim. Do not send it to the customer until a reviewer approves it.'}
-                                    </p>
-                                </>
-                        ) : (
-                            <>
-                                <h4>Evidence Check Passed</h4>
-                                <p>
-                                    This answer meets the evidence-check rules.
-                                    Review the suggested reply before using it.
-                                </p>
-                            </>
-                        )}
-
-                    </div>
-
-
-
-                    
-                    {/* Changes the confidence box colour based on the AI result and 
-                    displays the confidence score for the selected email */}
-                    <div
-                        className={`confidence-section ${confidencePercent >= 70 && !needsReview
-                                ? 'confidence-high'
-                                : confidencePercent >= 50
-                                    ? 'confidence-medium'
-                                    : 'confidence-low'
-                            }`}
-                    >
-                        {/* Show the confidence score. */}
-                              <h4>
-                                  {isReviewCompleted
-                                      ? 'Original AI Confidence'
-                                      : 'AI Confidence Score'}
-                              </h4>
-
-                        <p className="confidence-score">
-                            {confidencePercent}%
-                        </p>
-
-                        {/* Show whether the answer needs review. */}
-                        <p className="confidence-status">
-                            {selectedResult.status === 'reviewed_corrected'
-                                ? 'Human Reviewed — Corrected'
-                                : selectedResult.status === 'reviewed_approved'
-                                    ? 'Human Reviewed — Approved'
-                                    : selectedResult.status === 'pending_review'
-                                        ? 'Awaiting Human Review'
-                                        : selectedResult.status === 'approved'
-                                            ? 'AI Verification Passed'
-                                            : 'AI Answer Checked'}
-                        </p>
-
-                    </div>
-
-
-
-                        {/* Display the AI answer or the final human-reviewed answer. */}
-                        <div className={`ai-answer-section ${isReviewCompleted ? 'ai-answer-reviewed' : ''}`}>
-
-                            <h4>
-                                {isReviewCompleted
-                                    ? 'Human-Reviewed Answer'
-                                    : 'Suggested AI Answer'}
-                            </h4>
-
-                            {isReviewCompleted && (
-                                <p className="reviewed-label">
-                                    ✓ {selectedResult.status === 'reviewed_corrected'
-                                        ? 'Corrected by Human Reviewer'
-                                        : 'Approved by Human Reviewer'}
-                                </p>
-                            )}
-
-                            <p>{selectedResult.answer}</p>
-                        </div>
-
-
-                    
-                    {/* Display the verification reasons returned by the backend. */}
-                    <div className="verification-section">
-                        <h4>Verification Result</h4>
-
-                        {/* Show a message if the backend returned no claims. */}
-                        {(!selectedResult.claims || selectedResult.claims.length === 0) && (
-                            <p>No claim verification details available.</p>
-                        )}
-
-                        {/* Display the reason for each verified claim. */}
-                        {selectedResult.claims?.map((claim, index) => (
-                            <p key={claim.id ?? index}>
-
-                                {/* Display the claim number and verification label. */}
-                                <strong>
-                                    Claim {index + 1} ({claim.label ?? 'unknown'}):
-                                </strong>{' '}
-
-                                {/* Explain why the claim was supported or contradicted. */}
-                                {claim.reason || 'No explanation provided.'}
-
-                            </p>
-                        ))}
-                    </div>
-
-                    
-                    
-                        {/* Display the AI claims and their supporting evidence. */}
-                        <div className="claims-section">
-                              <h4>
-                                  {isReviewCompleted
-                                      ? 'Original AI Claim Verification'
-                                      : 'Claim-by-Claim Verification'}
-                              </h4>
-
-                              {isReviewCompleted && (
-                                  <p className="original-claims-note">
-                                      These verification results belong to the original AI answer,
-                                      before human review. The corrected answer is shown above.
-                                  </p>
-                              )}
-
-                            {/* Loop through the claims returned by the backend. */}
-                            {selectedResult.claims?.map((claim, index) => {
-
-                                // Find the source document matching this claim's sourceId.
-                                const source = selectedResult.sources?.find(
-                                    (item) => item.id === claim.sourceId
-                                )
-
-                                // The backend uses lowercase verification labels.
-                                const claimLabel = claim.label ?? claim.status ?? 'insufficient'
-
-                                return (
-                                    <div className="claim-card" key={claim.id ?? index}>
-
-                                        {/* Claim number and verification status. */}
-                                        <div className="claim-header">
-                                            <strong>Claim {index + 1}</strong>
-
-                                            <span
-                                                className={`claim-status ${claimLabel === 'supported'
-                                                        ? 'claim-supported'
-                                                        : claimLabel === 'contradicted'
-                                                            ? 'claim-contradicted'
-                                                            : 'claim-insufficient'
-                                                    }`}
-                                            >
-                                                {claimLabel}
-                                            </span>
-                                        </div>
-
-                                        {/* The statement generated by AI. */}
-                                        <p>{claim.text}</p>
-
-                                        {/* Evidence source information. */}
-                                        <div className="claim-source">
-                                            <strong>Evidence Source:</strong>
-
-                                            {source ? (
-                                                <>
-                                                    {/* Display the policy document title. */}
-                                                    <p>{source.title}</p>
-
-                                                    {/* Show whether the source is official. */}
-                                                    <p>
-                                                        <strong>Authority:</strong>{' '}
-                                                        {source.authority === 'official'
-                                                            ? 'Official Source'
-                                                            : 'Unofficial Source'}
-                                                    </p>
-
-                                                    {/* Display the source document version. */}
-                                                    <p>
-                                                        <strong>Version:</strong> {source.version}
-                                                    </p>
-
-                                                    {/* Link to the actual policy document. */}
-                                                    {source.url ? (
-                                                        <p>
-                                                            <a
-                                                                href={source.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                            >
-                                                                Open Policy Document ↗
-                                                            </a>
-                                                        </p>
-                                                    ) : (
-                                                        <p>No document link available.</p>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <p>No matching evidence source found.</p>
-                                            )}
-
-                                            {/* Warn the officer if the source is outdated. */}
-                                            {claim.outdated && (
-                                                <p className="evidence-warning">
-                                                    ⚠️ This claim references outdated evidence.
-                                                </p>
-                                            )}
-
-                                            {/* Warn the officer if the source is unofficial. */}
-                                            {source?.authority === 'unofficial' && (
-                                                <p className="evidence-warning">
-                                                    ⚠️ Unofficial source — verify before relying on it.
-                                                </p>
-                                            )}
-
-                                            {/* Show the exact evidence quoted by the backend. */}
-                                            {claim.quote && (
-                                                <details className="source-details">
-                                                    <summary>View Exact Evidence</summary>
-
-                                                    <div className="source-passage">
-                                                        <strong>Evidence Passage:</strong>
-                                                        <p>{claim.quote}</p>
-                                                    </div>
-                                                </details>
-                                            )}
-
-                                        </div>
-                                    </div>
-                                )
-                            })}
-
-                            {/* Handle answers with no claims. */}
-                            {(!selectedResult.claims ||
-                                selectedResult.claims.length === 0) && (
-                                    <p>No claims available for verification.</p>
-                                )}
-                        </div>
-
-                            
-
-                              {/* Display the real human review status from the backend. */}
-                              <div className="review-action-section">
-
-                                  {/* Case 1: The answer is already waiting for a reviewer. */}
-                                  {isReviewPending ? (
-                                      <div className="review-success-message">
-
-                                          <div className="review-status-header">
-                                              <strong>Human Review</strong>
-                                              <span className="review-pending-badge">
-                                                  Pending Review
-                                              </span>
-                                          </div>
-
-                                          <p>
-                                              This answer has already been sent for human review.
-                                              Please wait for a reviewer to check it.
-                                          </p>
-
-                                          <p>
-                                              Do not send this AI answer to the customer yet.
-                                          </p>
-
-                                      </div>
-
-                                  
-                              ) : isReviewCompleted ? (
-
-                                  /* The reviewer has finished checking this answer. */
-                                  <div className="review-success-message">
-
-                                      <div className="review-status-header">
-                                          <strong>Human Review</strong>
-                                          <span className="review-approved-badge">
-                                              Review Completed
-                                          </span>
-                                      </div>
-
-                                      {/* Show whether the answer was approved or corrected. */}
-                                      <p>
-                                          <strong>Decision:</strong>{' '}
-                                          {selectedResult.status === 'reviewed_corrected'
-                                              ? 'Corrected by Reviewer'
-                                              : 'Approved by Reviewer'}
-                                      </p>
-
-                                      {/* Display the corrected answer, if the backend provides it. */}
-                                      {backendReview?.decision?.correctedAnswer && (
-                                          <div className="reviewed-answer-section">
-                                              <h4>Human-Reviewed Answer</h4>
-                                              <p>{backendReview.decision.correctedAnswer}</p>
-                                          </div>
-                                      )}
-
-                                      {/* Explain why the reviewer made this decision. */}
-                                      {backendReview?.decision?.reason && (
-                                          <p>
-                                              <strong>Reviewer's Reason:</strong>{' '}
-                                              {backendReview.decision.reason}
-                                          </p>
-                                      )}
-
-                                      <p>
-                                          The human review has been completed.
-                                      </p>
-
-                                  </div>
-
-                              ) : (
-
-
-                                      /* Case 3: No review has been requested yet. */
-                                        <button
-                                            className="send-review-button"
-                                            onClick={handleRequestReview}
-                                            disabled={sendingReview}
-                                        >
-                                            {sendingReview
-                                                ? 'Sending for Review...'
-                                                : 'Request Human Review'}
-                                        </button>
-                                  )}
-                                  {reviewError && (
-                                      <p role="alert" className="evidence-warning">
-                                          {reviewError}
-                                      </p>
-                                  )}
-
-                              </div>
-
-                        
-                
-                    </div>
-            </section>
+                    )}
+                    {claim.reason && <p className="ow-muted">{claim.reason}</p>}
+                  </div>
+                )
+              })}
+            </div>
+
+            {otherSources.length > 0 && (
+              <div>
+                <p className="ow-label">Other sources found ({otherSources.length})</p>
+                <ul className="ow-sources">
+                  {otherSources.map((source) => (
+                    <li key={source.id}>
+                      <span>
+                        {source.title} · v{source.version}
+                      </span>
+                      {sourceTags(source)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="ow-result-foot">
+              {isReviewPending ? (
+                <span className="ow-chip ow-chip-wait">Waiting for a reviewer</span>
+              ) : (
+                !isReviewCompleted && (
+                  <button className="ow-secondary" onClick={handleRequestReview} disabled={sendingReview}>
+                    {sendingReview ? 'Sending for review…' : 'Request human review'}
+                  </button>
+                )
+              )}
+              {reviewError && (
+                <p role="alert" className="ow-error">
+                  {reviewError}
+                </p>
+              )}
+            </div>
+          </section>
         )}
       </div>
     </div>

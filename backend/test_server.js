@@ -260,7 +260,7 @@ async function runTests() {
     JSON.stringify(t12.body)
   );
 
-  // Test 13: Demo seed has unanswered emails for Generate live, all owned by officer-1
+  // Test 13: Demo seed has unanswered emails for Generate live (em_004 scam SMS, em_009 to em_013), all owned by officer-1
   resetSeedData();
   const t13 = await mockRequest(app, "GET", "/api/officer/emails", null, {
     "x-user-id": "officer-1",
@@ -271,9 +271,9 @@ async function runTests() {
   assert(
     t13.status === 200 &&
       emails.length === 13 &&
-      JSON.stringify(unanswered) === JSON.stringify(["em_009", "em_010", "em_011", "em_012", "em_013"]) &&
+      JSON.stringify(unanswered) === JSON.stringify(["em_004", "em_009", "em_010", "em_011", "em_012", "em_013"]) &&
       emails.every((e) => e.officerId === "officer-1"),
-    "Demo seed: 13 emails, em_009 to em_013 unanswered, all owned by officer-1",
+    "Demo seed: 13 emails, em_004 and em_009 to em_013 unanswered, all owned by officer-1",
     JSON.stringify({ count: emails.length, unanswered, officers: [...new Set(emails.map((e) => e.officerId))] })
   );
 
@@ -330,13 +330,13 @@ async function runTests() {
   // Test 16: /api/stats has the dashboard totals and 8 byCategory rows
   const t16 = await mockRequest(app, "GET", "/api/stats", null, { "x-user-id": "admin-1", "x-role": "admin" });
   const st = t16.body;
-  const failureKeys = JSON.stringify(["contradicted", "insufficientEvidence", "manual", "outdated", "safety"]);
+  const failureKeys = JSON.stringify(["contradicted", "insufficientEvidence", "manual", "outdated"]);
   assert(
     t16.status === 200 &&
-      st.answeredTotal === 8 &&
-      st.reviewedTotal === 5 &&
+      st.answeredTotal === 7 &&
+      st.reviewedTotal === 4 &&
       st.resolvedTotal === 1 &&
-      st.pendingTotal === 4 &&
+      st.pendingTotal === 3 &&
       Array.isArray(st.byCategory) &&
       st.byCategory.length === 8 &&
       st.byCategory.every((r) =>
@@ -383,8 +383,8 @@ async function runTests() {
   assert(
     t17.status === 200 &&
       counts.questions === 13 &&
-      counts.answers === 8 &&
-      counts.reviews === 5 &&
+      counts.answers === 7 &&
+      counts.reviews === 4 &&
       !db.prepare("SELECT 1 FROM answers WHERE id IN ('a_live_test', 'a_new_test')").get() &&
       !db.prepare("SELECT 1 FROM questions WHERE email_id = 'em_new_test'").get() &&
       db.prepare("SELECT status FROM reviews WHERE id = 'r_042'").get().status === "pending",
@@ -518,6 +518,16 @@ async function runTests() {
     "Chat question (chat_ id) goes to review but not into the officer inbox",
     JSON.stringify({ status: t21.status, review: t21.body.review, inbox: inbox21.length })
   );
+
+  // Test 22: Changed safety wording alone no longer sends an answer to review
+  const { checkTrustStatus } = require("./services/trustService");
+  const trigger22 = checkTrustStatus({
+    type: "generated",
+    confidence: 1,
+    safetyTextAltered: true,
+    claims: [{ text: "claim", label: "supported" }]
+  });
+  assert(trigger22 === null, "safetyTextAltered alone does not trigger a review", String(trigger22));
 
   console.log("\n-------------------------------------------------");
   console.log(`Results: ${passed} passed, ${failed} failed`);
