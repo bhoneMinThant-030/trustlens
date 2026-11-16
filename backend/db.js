@@ -485,20 +485,9 @@ function seedInitialDataIfEmpty() {
     claims103.forEach((c) => insertClaim.run({ ...c, answerId: "a_103" }));
 
     // -------------------------------------------------------------
-    // 4. EM-004 / a_104: Safety Wording Altered Guardrail -> auto_safety
+    // 4. EM-004: scam SMS question, left unanswered so the demo shows
+    //    TrustLens answering it on the spot (Verified, no review)
     // -------------------------------------------------------------
-    const claims104 = [
-      {
-        id: "c104-1",
-        sentence: "Please provide the SMS link details so our officers can verify your account balance.",
-        status: "contradicted",
-        sourceId: KB_SOURCES.scamPolicy.id,
-        quote: "OCBC employees will never ask you to reveal your PIN/OTP or transfer funds to personal accounts.",
-        outdated: 0,
-        reason: "Fixed anti-scam security wording was modified by the AI model."
-      }
-    ];
-
     insertQuestion.run({
       id: "q_104",
       emailId: "em_004",
@@ -510,37 +499,6 @@ function seedInitialDataIfEmpty() {
       question: "I received an SMS with a link asking for my card details. Is this genuine?",
       createdAt: "2026-11-05T11:00:00+08:00"
     });
-
-    insertAnswer.run({
-      id: "a_104",
-      questionId: "q_104",
-      type: "generated",
-      answer: "Please provide the SMS link details so our officers can verify your account balance.",
-      category: "lost-stolen-fraud",
-      confidence: 0.30,
-      safetyTextAltered: 1,
-      status: "pending_review",
-      claims: JSON.stringify(claims104),
-      sources: JSON.stringify([KB_SOURCES.scamPolicy]),
-      createdAt: "2026-11-05T11:01:00+08:00",
-      updatedAt: "2026-11-05T11:01:00+08:00"
-    });
-
-    insertReview.run({
-      id: "r_044",
-      questionId: "q_104",
-      answerId: "a_104",
-      trigger: "auto_safety",
-      status: "pending",
-      decision: null,
-      reviewer: null,
-      note: "Fixed anti-scam safety text altered. OCBC never asks customers to share links or OTPs.",
-      correctedAnswer: null,
-      createdAt: "2026-11-05T11:01:00+08:00",
-      decidedAt: null
-    });
-
-    claims104.forEach((c) => insertClaim.run({ ...c, answerId: "a_104" }));
 
     // -------------------------------------------------------------
     // 5. EM-005 / a_105: Low Confidence (fees-charges) -> auto_threshold
@@ -1143,7 +1101,7 @@ function getFlaggedDocuments() {
 
 // Answers that ship with the demo seed. resetEmail refuses to delete these;
 // only the full reset (POST /api/admin/reset) brings them back.
-const SEEDED_ANSWER_IDS = ["a_101", "a_102", "a_103", "a_104", "a_105", "a_106", "a_107", "a_108"];
+const SEEDED_ANSWER_IDS = ["a_101", "a_102", "a_103", "a_105", "a_106", "a_107", "a_108"];
 
 /**
  * Put one email back to "Not Checked": delete its answer, claims and review,
@@ -1283,7 +1241,6 @@ function getStats() {
       SUM(CASE WHEN r.id IS NOT NULL AND EXISTS (
         SELECT 1 FROM claims c WHERE c.answer_id = a.id AND c.outdated = 1
       ) THEN 1 ELSE 0 END) AS outdated,
-      SUM(CASE WHEN r.id IS NOT NULL AND a.safety_text_altered = 1 THEN 1 ELSE 0 END) AS safety,
       SUM(CASE WHEN r.trigger = 'manual' THEN 1 ELSE 0 END) AS manual
     FROM answers a
     JOIN questions q ON a.question_id = q.id
@@ -1296,7 +1253,7 @@ function getStats() {
     sentToReview: 0,
     pending: 0,
     resolved: 0,
-    failures: { contradicted: 0, insufficientEvidence: 0, outdated: 0, safety: 0, manual: 0 }
+    failures: { contradicted: 0, insufficientEvidence: 0, outdated: 0, manual: 0 }
   });
   const byKey = new Map(CATEGORIES.map((cat) => [cat, empty()]));
 
@@ -1388,6 +1345,8 @@ function getAnswerById(id) {
     officerId: row.officer_id,
     type: row.type,
     answer: row.corrected_answer || row.answer,
+    // The AI's own draft, kept even after a reviewer corrects it
+    aiAnswer: row.answer,
     category: row.category,
     confidence: row.confidence,
     status: row.status,

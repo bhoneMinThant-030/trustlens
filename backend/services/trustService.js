@@ -9,12 +9,10 @@ function checkTrustStatus(lambdaResponse) {
         return null;
     }
 
-    // Priority 1: Safety wording changed
-    if (lambdaResponse.safetyTextAltered === true) {
-        return "auto_safety";
-    }
+    // safetyTextAltered is still returned by the Lambda but no longer routes to review:
+    // the answer prompt tells the AI to copy the fixed safety sentence exactly (decided 16 Nov).
 
-    // Priority 2: Contradicted claims
+    // Priority 1: Contradicted claims
     const hasContradiction = Array.isArray(lambdaResponse.claims) &&
         lambdaResponse.claims.some(
             claim => claim.label === "contradicted"
@@ -24,7 +22,7 @@ function checkTrustStatus(lambdaResponse) {
         return "auto_contradiction";
     }
 
-    // Priority 3: Low confidence
+    // Priority 2: Low confidence
     if (
         typeof lambdaResponse.confidence === "number" &&
         lambdaResponse.confidence < threshold

@@ -394,44 +394,6 @@ export const mockReviews = [
     decision: null,
   },
   {
-    id: 'r_046',
-    questionId: 'q_106',
-    answerId: 'a_106',
-    emailId: 'em_003',
-    officerId: 'officer-1',
-    question:
-      'Someone called saying they were from OCBC and asked for my OTP to block my lost card. Was that okay?',
-    answer:
-      'OCBC staff may ask for your OTP to confirm your identity before blocking a card. You can also lock your card yourself in the OCBC app, which takes effect in real time.',
-    confidence: 0.5,
-    category: 'lost-stolen-fraud',
-    claims: [
-      {
-        id: 'c1',
-        text: 'OCBC staff may ask for your OTP to confirm your identity before blocking a card.',
-        label: 'contradicted',
-        sourceId: 'impersonation-scams@2026.11#1',
-        outdated: false,
-        reason:
-          'Fixed safety wording: OCBC employees will never ask you to reveal your PIN/OTP. The AI changed this wording.',
-      },
-      {
-        id: 'c2',
-        text: 'You can also lock your card yourself in the OCBC app, which takes effect in real time.',
-        label: 'supported',
-        sourceId: 'card-control@2026.11#2',
-        outdated: false,
-        reason: 'Matches the Card Control guide.',
-      },
-    ],
-    sources: [SOURCES.scams, SOURCES.cardControl],
-    trigger: 'auto_safety',
-    note: null,
-    status: 'pending',
-    createdAt: '2026-11-04T11:48:00+08:00',
-    decision: null,
-  },
-  {
     id: 'r_047',
     questionId: 'q_107',
     answerId: 'a_107',

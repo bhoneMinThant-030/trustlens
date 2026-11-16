@@ -17,7 +17,7 @@ Two contracts: **React ↔ Node** (owner: Backend 1) and **Node ↔ Lambda** (ow
 
 **Claim label:** `supported` · `contradicted` · `insufficient_evidence`
 
-**Review trigger:** `auto_threshold` · `auto_contradiction` · `auto_safety` · `manual`
+**Review trigger:** `auto_threshold` · `auto_contradiction` · `manual`
 
 **Review status:** `pending` · `approved` · `corrected`
 
@@ -94,7 +94,7 @@ Node invokes the Lambda with the AWS SDK (`InvokeCommand`), not over HTTP.
 - `quote`: the exact words from the cited passage behind the label (`null` for `insufficient_evidence`). A quote may join two parts of a passage with ` ... `. The Lambda checks every quote is really in a passage, with numbers and negations matching exactly. If Model B cited the wrong passage, `sourceId` is moved to the passage that contains the quote. If no passage contains it, the claim is downgraded to `insufficient_evidence`. Screens can highlight the quote inside the source excerpt
 - `outdated: true` means the cited document has been superseded by a newer version
 - `sources` lists every passage a claim cites (`cited: true`) first, then at most 3 uncited passages that matched the question well (`cited: false`, similarity 0.40 or more). Each source has `outdated` and `newerVersion` (the version that replaced it, or `null`), so screens can badge old documents even when no claim cites them
-- `safetyTextAltered: true` means fixed safety wording was changed by the AI
+- `safetyTextAltered: true` means fixed safety wording was changed by the AI. Kept for information only: since 16 Nov it no longer sends an answer to review, because the answer prompt makes the AI copy the safety sentence exactly
 - If no passage in the knowledge base matches the question, or the passages found do not answer it, `answer` says so, `claims` and `sources` are empty and `confidence` is `0`
 
 Two extra fields, also returned (Node can store them; screens can ignore them):
@@ -178,7 +178,7 @@ Response: the Lambda response plus what Node adds.
 ```
 
 - `review` is `null` when no review is needed
-- Node's routing rule: send to review if `confidence < threshold` (config, starts at `0.7`), or any claim is `contradicted`, or `safetyTextAltered` is `true`. Approved answers are never auto-routed
+- Node's routing rule: send to review if any claim is `contradicted` (`auto_contradiction`), or `confidence < threshold` (`auto_threshold`; config, starts at `0.7`). Approved answers are never auto-routed
 - If the Lambda fails, Node returns HTTP 502 with `LAMBDA_FAILED`
 
 ### `POST /api/answers/:answerId/review` (officer sends manually)
@@ -266,7 +266,7 @@ Totals and per-category counts for the Dashboard. Seeded and live answers both c
       "answered": 2,
       "sentToReview": 2,
       "pending": 2,
-      "failures": { "contradicted": 2, "insufficientEvidence": 0, "outdated": 1, "safety": 1, "manual": 0 }
+      "failures": { "contradicted": 2, "insufficientEvidence": 0, "outdated": 1, "manual": 0 }
     }
   ]
 }
@@ -274,7 +274,7 @@ Totals and per-category counts for the Dashboard. Seeded and live answers both c
 
 - `answeredTotal`: answers generated. `reviewedTotal`: answers sent to review (any status). `resolvedTotal`: reviews approved or corrected
 - `byCategory` always has 8 rows (the 7 categories plus `uncategorised`), in the order of the shared category list (one row shown above). Categories come from the question, the same as `pendingByCategory` and the review queue
-- `failures` count answers sent to review that have: a `contradicted` claim, an `insufficient_evidence` claim, an outdated claim, altered safety text, or a `manual` trigger. One answer can count in several columns
+- `failures` count answers sent to review that have: a `contradicted` claim, an `insufficient_evidence` claim, an outdated claim, or a `manual` trigger. One answer can count in several columns
 
 ### `GET /api/officer/emails` (officer)
 

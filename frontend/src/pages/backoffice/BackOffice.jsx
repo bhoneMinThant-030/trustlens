@@ -71,9 +71,6 @@ function BackOffice() {
               <option value="admin">Admin 1</option>
             </select>
           </label>
-          <a className="bo-link" href="/">
-            Officer screen
-          </a>
         </div>
       </header>
 

@@ -13,7 +13,6 @@ const FAILURE_COLUMNS = [
   { key: 'contradicted', label: 'Contradicted' },
   { key: 'insufficientEvidence', label: 'Insufficient evidence' },
   { key: 'outdated', label: 'Outdated source' },
-  { key: 'safety', label: 'Safety wording' },
   { key: 'manual', label: 'Sent by officer' },
 ]
 

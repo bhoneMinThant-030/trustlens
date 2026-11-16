@@ -37,7 +37,6 @@ export const CLAIM_LABELS = {
 export const TRIGGER_LABELS = {
   auto_threshold: 'Low confidence',
   auto_contradiction: 'Contradicted claim',
-  auto_safety: 'Safety wording changed',
   manual: 'Sent by officer',
 }
 

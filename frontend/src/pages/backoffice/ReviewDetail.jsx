@@ -18,8 +18,6 @@ function triggerExplanation(review) {
       return `Confidence ${formatPercent(review.confidence)} is below the ${formatPercent(CONFIDENCE_THRESHOLD)} threshold.`
     case 'auto_contradiction':
       return `${contradicted} claim${contradicted === 1 ? '' : 's'} contradict${contradicted === 1 ? 's' : ''} an approved source.`
-    case 'auto_safety':
-      return 'The AI changed fixed safety wording. Safety wording must appear exactly as approved.'
     case 'manual':
       return 'The officer sent this answer for review.'
     default:

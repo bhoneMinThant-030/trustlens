@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { API_URL } from '../../api/client'
 import { generateAnswer } from '../../api/officer'
+import { CLAIM_LABELS } from '../../constants/labels'
+import { REVIEW_REASONS } from './reviewText'
 import './AskTrustLens.css'
 
 /*
@@ -17,19 +19,6 @@ const STARTER_QUESTIONS = [
   'What is the monthly cashback cap on the OCBC 365 card?',
   'Can I use my credit card to buy cryptocurrency?',
 ]
-
-// Why an answer was sent to a reviewer (review.trigger).
-const TRIGGER_TEXT = {
-  auto_safety: 'Safety wording was changed',
-  auto_contradiction: 'A claim contradicts an official source',
-  auto_threshold: 'Not enough evidence to trust it',
-  manual: 'Review requested by an officer',
-}
-
-const LABEL_CLASS = {
-  supported: 'claim-supported',
-  contradicted: 'claim-contradicted',
-}
 
 function newChatId() {
   return `chat_${crypto.randomUUID()}`
@@ -52,7 +41,7 @@ function ReplyStatus({ result, reviewed }) {
       <div className="chat-status chat-status-wait">
         <span className="chat-badge chat-badge-wait">Sent to review</span>
         <span>
-          {TRIGGER_TEXT[result.review.trigger] ?? 'Flagged for a human check'}. Don't use this answer
+          {REVIEW_REASONS[result.review.trigger] ?? 'Flagged for a human check'}. Don't use this answer
           until a reviewer checks it.
         </span>
       </div>
@@ -80,8 +69,8 @@ function Evidence({ result }) {
 
       {claims.map((claim, index) => (
         <div className="chat-claim" key={claim.id ?? index}>
-          <span className={`claim-status ${LABEL_CLASS[claim.label] ?? 'claim-insufficient'}`}>
-            {claim.label}
+          <span className={`bo-label bo-label-${claim.label}`}>
+            {CLAIM_LABELS[claim.label] ?? claim.label}
           </span>
           <p>{claim.text}</p>
           {claim.quote && <blockquote>{claim.quote}</blockquote>}

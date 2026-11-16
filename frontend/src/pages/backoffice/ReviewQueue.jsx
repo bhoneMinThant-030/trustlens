@@ -14,7 +14,7 @@ import { CheckIcon, RefreshIcon } from './Icons'
 import ReviewDetail from './ReviewDetail'
 
 // The four reasons an answer lands here, in the order the filter lists them.
-const REASONS = ['auto_contradiction', 'auto_threshold', 'auto_safety', 'manual']
+const REASONS = ['auto_contradiction', 'auto_threshold', 'manual']
 
 /*
   Review queue tab (reviewer).

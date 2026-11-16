@@ -1,10 +1,10 @@
-/* "Ask TrustLens" chat tab on the officer screen. Colours match OfficerWorkspace.css. */
+/* "Ask TrustLens" chat tab on the officer screen. Colours come from src/styles/theme.css. */
 
 .ask-trustlens {
   max-width: 900px;
   margin: 0 auto;
   background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--bo-border);
   border-radius: 12px;
   padding: 24px;
 }
@@ -16,7 +16,7 @@
 
 .ask-head p {
   margin: 0 0 16px;
-  color: #6b7280;
+  color: var(--bo-ink-3);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -29,14 +29,14 @@
   max-height: 60vh;
   overflow-y: auto;
   padding: 16px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background-color: #fafafb;
+  border: 1px solid var(--bo-border);
   border-radius: 10px;
 }
 
 .chat-empty {
   margin: auto 0;
-  color: #6b7280;
+  color: var(--bo-ink-3);
   text-align: center;
 }
 
@@ -50,7 +50,7 @@
 
 .chat-bubble-officer {
   align-self: flex-end;
-  background-color: #d71920;
+  background-color: var(--bo-red);
   color: #ffffff;
   border-bottom-right-radius: 4px;
 }
@@ -58,19 +58,19 @@
 .chat-bubble-bot {
   align-self: flex-start;
   background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--bo-border);
   border-bottom-left-radius: 4px;
 }
 
 .chat-loading {
-  color: #6b7280;
+  color: var(--bo-ink-3);
   font-style: italic;
 }
 
 .chat-error {
-  border-color: #fecaca;
-  background-color: #fff1f2;
-  color: #b91c1c;
+  border-color: var(--bo-red-soft);
+  background-color: var(--bo-red-wash);
+  color: var(--bo-red-deep);
 }
 
 .chat-status {
@@ -83,11 +83,11 @@
 }
 
 .chat-status-good {
-  color: #166534;
+  color: var(--bo-green);
 }
 
 .chat-status-wait {
-  color: #92400e;
+  color: var(--bo-amber);
 }
 
 .chat-badge {
@@ -99,13 +99,13 @@
 }
 
 .chat-badge-good {
-  background-color: #dcfce7;
-  border: 1px solid #86efac;
+  background-color: var(--bo-green-soft);
+  border: 1px solid #b9dcc8;
 }
 
 .chat-badge-wait {
-  background-color: #fef3c7;
-  border: 1px solid #fcd34d;
+  background-color: var(--bo-amber-soft);
+  border: 1px solid #ead3b2;
 }
 
 .chat-answer {
@@ -115,7 +115,7 @@
 .chat-meta,
 .chat-muted {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: var(--bo-ink-3);
   font-size: 12px;
 }
 
@@ -128,20 +128,20 @@
 .chat-original summary,
 .chat-evidence summary {
   cursor: pointer;
-  color: #374151;
+  color: var(--bo-ink-2);
   font-weight: bold;
 }
 
 .chat-original p {
   margin: 6px 0 0;
-  color: #6b7280;
+  color: var(--bo-ink-3);
   text-decoration: line-through;
 }
 
 .chat-claim {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--bo-border);
 }
 
 .chat-claim p {
@@ -151,15 +151,15 @@
 .chat-claim blockquote {
   margin: 6px 0 0;
   padding: 6px 10px;
-  border-left: 3px solid #d1d5db;
-  background-color: #f9fafb;
-  color: #374151;
+  border-left: 3px solid var(--bo-field);
+  background-color: #fafafb;
+  color: var(--bo-ink-2);
 }
 
 .chat-sources {
   margin: 10px 0 0;
   padding-left: 18px;
-  color: #374151;
+  color: var(--bo-ink-2);
 }
 
 .chat-sources li {
@@ -167,7 +167,7 @@
 }
 
 .chat-flag {
-  color: #92400e;
+  color: var(--bo-amber);
 }
 
 .chat-starters {
@@ -179,17 +179,17 @@
 
 .chat-starter {
   padding: 6px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--bo-border);
   border-radius: 999px;
   background-color: #ffffff;
-  color: #374151;
+  color: var(--bo-ink-2);
   font-size: 13px;
   cursor: pointer;
 }
 
 .chat-starter:hover:not(:disabled) {
-  border-color: #d71920;
-  color: #d71920;
+  border-color: var(--bo-red);
+  color: var(--bo-red);
 }
 
 .chat-form {
@@ -201,7 +201,7 @@
   flex: 1;
   min-width: 0;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--bo-field);
   border-radius: 8px;
   font-size: 15px;
 }
@@ -210,7 +210,7 @@
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  background-color: #d71920;
+  background-color: var(--bo-red);
   color: #ffffff;
   font-weight: bold;
   cursor: pointer;
@@ -224,45 +224,12 @@
 
 .chat-input-error {
   margin: 6px 0 0;
-  color: #b91c1c;
+  color: var(--bo-red-deep);
   font-size: 13px;
-}
-
-/* Tabs in the officer header: Customer inbox / Ask TrustLens */
-.officer-tabs {
-  display: flex;
-  gap: 6px;
-}
-
-.officer-tabs button {
-  padding: 8px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background-color: #ffffff;
-  color: #374151;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.officer-tabs button.active {
-  border-color: #d71920;
-  background-color: #fff1f2;
-  color: #d71920;
-  font-weight: bold;
 }
 
 @media (max-width: 700px) {
   .chat-bubble {
     max-width: 100%;
   }
-
-  .officer-header {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-}
-
-/* The officer layout sets display: grid, which would override the hidden attribute. */
-.officer-workspace [hidden] {
-  display: none !important;
 }
